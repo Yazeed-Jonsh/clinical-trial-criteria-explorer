@@ -29,12 +29,12 @@ Build Clinical Trial Criteria Explorer first, then Repository Archaeologist. Lea
 
 API ingestion, text preparation, embeddings, vector and keyword retrieval, filters, RAG, tool calling, state and context management, FastAPI, automated tests, evaluation, and observability.
 
-Fine-tuning is outside the agreed first-project scope. The author selected Option B: local retrieval with hosted generation, including the shared SQLite, FAISS, BM25, FastAPI, and LangGraph foundation. The expanded technical plan awaits section review. Ten hours is an effort target, not evidence that all planned features are feasible.
+Fine-tuning is outside the agreed first-project scope. The author selected Option B: local retrieval with hosted generation, including the shared SQLite, FAISS, BM25, FastAPI, and LangGraph foundation. The author approved the expanded Technical Plan with "yes I approve it". Ten hours is an effort target, not evidence that all planned features are feasible.
 
 ## Alternatives
 
-The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. The documented trade-offs include local hardware requirements versus network dependency, credentials, and usage costs. The author did not give a separate rejection rationale; do not invent one. The formal Alternatives section is pending.
+The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. The documented trade-offs include local hardware requirements versus network dependency, credentials, and usage costs. The author did not give a separate rejection rationale; do not invent one. Alternatives Considered is drafted and awaiting section review. It also preserves the existing ClinicalTrials.gov interface as a product baseline rather than claiming that it is inadequate.
 
 ## EGM handoff
 
-Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", then chose Option B: "B is better". The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. Completed Technical Plan approval is next. No provider/model or spending cap is selected, and no fresh-context review has run.
+Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", chose Option B: "B is better", and approved the completed Technical Plan: "yes I approve it". The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. Alternatives Considered review is next. No provider/model or spending cap is selected, and no fresh-context review has run.

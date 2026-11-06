@@ -1,14 +1,14 @@
 # Clinical Trial Criteria Explorer
 
 - Author: Yazeed-Jonsh
-- Status: Draft; Overview and Goals approved; Option B selected; completed Technical Plan awaiting section review
+- Status: Draft; Overview and Goals and Technical Plan approved; Alternatives Considered awaiting review
 - Date: 2026-11-07
 - Predecessor: [discussion_summary.md](discussion_summary.md)
-- EGM stage: technical planning; implementation plan pending
+- EGM stage: alternatives review; detailed implementation plan pending
 
-Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries. It does not approve the technical options below.
+Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries.
 
-The author then selected Option B in chat: "B is better". Local retrieval with hosted generation and the shared foundation below are selected. The expanded contracts and controls in this section remain proposed until Technical Plan review. Selection of B does not authorize paid requests or select a provider.
+The author then selected Option B in chat: "B is better", and approved the completed Technical Plan: "yes I approve it". Local retrieval with hosted generation and the technical contracts below are approved. Live model requests still require a provider/model choice and an agreed spending cap.
 
 ## Overview
 
@@ -76,7 +76,7 @@ Use a FastAPI service with a /api/v1 prefix and its interactive API documentatio
 
 Validate structured model responses against permitted evidence IDs. Reject invented IDs, return source wording where a generated explanation cannot be supported, and expose uncertainty. Matching a citation proves that the passage exists, not that the paraphrase is medically faithful; the labeled evaluation must inspect meaning as well.
 
-These components were included in both architecture options and are covered by the author's selection of B. The specific behavior below is submitted for Technical Plan review.
+These components were included in both architecture options. The author selected B and subsequently approved the completed Technical Plan below.
 
 ### Previous candidate A — Local retrieval and local generation
 
@@ -175,8 +175,36 @@ Grow the five question templates into a small manually labeled development set a
 - [SQLite appropriate uses](https://www.sqlite.org/whentouse.html): local application storage and its concurrency trade-offs.
 - [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence): session checkpoints and state scoped to a thread.
 
+## Alternatives Considered
+
+This section records alternatives from the predecessor discussion. It adds no new architecture decision and makes no claim that quality, speed, or costs have been benchmarked.
+
+### A — Run answer generation locally
+
+Mechanism: retain the local study store and search indexes, and run the answer-generation model on this computer.
+
+Benefits: local control, no per-call hosted generation fee, and operation without an external model service after downloads.
+
+Costs and failure conditions: the model must fit available memory, respond within acceptable measured time, and handle tool calls, thresholds, and negation. Hardware inspection was denied, so local feasibility is unverified. Local execution does not guarantee accurate explanations.
+
+Decision: rejected by the author in favor of B, expressed as "B is better". The author supplied no separate technical rejection rationale. The documented engineering trade-off is local hardware and inference constraints versus hosted credentials, network dependency, and usage charges; this describes the options rather than inventing the author's reasoning.
+
+### B — Local retrieval with hosted generation (selected)
+
+Mechanism: retrieve public evidence locally and send selected passages with the question to a hosted model. Store source text, metadata, embeddings, and evaluation fixtures locally.
+
+Benefits: avoids running answer generation on the learner's computer. Ingestion and local search can be developed before hosted credentials are configured. Deterministic adapter fakes support ordinary tests while live model quality is measured separately.
+
+Costs and failure conditions: introduces provider availability, credentials, token limits, and usage costs. Hosted models can still misread criteria or produce unsupported explanations. The approved citation checks, original-source display, fidelity evaluation, and request budgets remain necessary. No provider, model, current price, or measured quality advantage has been established.
+
+Revisit this choice if the budget cannot support the workload, provider requirements cannot be met, or the chosen model fails evaluation. Bring measured evidence back to the author before changing the architecture.
+
+### Existing ClinicalTrials.gov interface — product baseline
+
+The predecessor identifies the existing website as the strongest product alternative: a reader can inspect original records without maintaining this application. The learning project adds the planned evidence-linked comparisons and retrieval experiments. Its value must be demonstrated on a benchmark. The author approved building the project; that does not establish that the original website is inadequate or rejected for general use.
+
 ## Next sections
 
-Review this completed Technical Plan. After approval, draft Alternatives Considered, then the detailed file-level implementation tasks through EGM's section gates. Exact hosted model selection and a spending cap remain prerequisites for live generation, not for data ingestion or local retrieval work. No EGM Goldfish review has run.
+Review Alternatives Considered, then draft the detailed file-level implementation tasks through EGM's next section gate. Hosted model selection and a spending cap remain prerequisites for live generation, not for ingestion or local retrieval. No EGM Goldfish review has run.
 
 *Drafted with EGM*

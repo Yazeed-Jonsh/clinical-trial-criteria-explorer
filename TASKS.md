@@ -9,8 +9,10 @@
 - [x] Author reviews Overview and Goals: approved in chat, "yes I approve them".
 - [x] Author selects Option B: local retrieval with hosted generation, "B is better".
 - [x] Draft technical plan after the section review.
-- [ ] Author reviews the completed Technical Plan.
-- [ ] Review alternatives and detailed implementation tasks through the EGM gates.
+- [x] Author reviews the completed Technical Plan: approved in chat, "yes I approve it".
+- [x] Draft Alternatives Considered from predecessor notes.
+- [ ] Author reviews Alternatives Considered.
+- [ ] Draft and review detailed implementation tasks through the EGM gate.
 - [ ] Finish Day 1 with an approved scope and a committed documentation milestone.
 
 ## Planned sequence after Day 1
@@ -35,4 +37,4 @@ Author exercise: explain why an unstated criterion does not establish that a par
 
 ## Evidence
 
-Overview and Goals approved; Option B selected. Completed Technical Plan drafted with retrieval, evidence provenance, bounded tools, API contracts, state, cost limits, and verification. Python 3.12.7 detected; hardware queries were denied by Windows. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Technical Plan section approval and EGM Goldfish review are pending.
+Overview and Goals approved; Option B selected. Completed Technical Plan drafted with retrieval, evidence provenance, bounded tools, API contracts, state, cost limits, and verification. Python 3.12.7 detected; hardware queries were denied by Windows. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Technical Plan approved. Alternatives Considered drafted for section review; detailed implementation and EGM Goldfish review remain pending.
