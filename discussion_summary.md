@@ -29,12 +29,12 @@ Build Clinical Trial Criteria Explorer first, then Repository Archaeologist. Lea
 
 API ingestion, text preparation, embeddings, vector and keyword retrieval, filters, RAG, tool calling, state and context management, FastAPI, automated tests, evaluation, and observability.
 
-Fine-tuning is outside the agreed first-project scope. Framework and storage choices remain proposals until the technical design is reviewed. Ten hours is an effort target, not evidence that all planned features are feasible.
+Fine-tuning is outside the agreed first-project scope. The author selected Option B: local retrieval with hosted generation, including the shared SQLite, FAISS, BM25, FastAPI, and LangGraph foundation. The expanded technical plan awaits section review. Ten hours is an effort target, not evidence that all planned features are feasible.
 
 ## Alternatives
 
-No architecture alternatives have been evaluated or rejected by the author yet. Existing discussion mentioned local vector search, FastAPI, and LangGraph as candidates. Do not label these as final architectural decisions.
+The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. The documented trade-offs include local hardware requirements versus network dependency, credentials, and usage costs. The author did not give a separate rejection rationale; do not invent one. The formal Alternatives section is pending.
 
 ## EGM handoff
 
-Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them". The proposed student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are now accepted. Architecture options remain open. No fresh-context review has run.
+Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", then chose Option B: "B is better". The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. Completed Technical Plan approval is next. No provider/model or spending cap is selected, and no fresh-context review has run.

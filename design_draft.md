@@ -1,12 +1,14 @@
 # Clinical Trial Criteria Explorer
 
 - Author: Yazeed-Jonsh
-- Status: Draft; Overview and Goals approved; architecture options awaiting author selection
+- Status: Draft; Overview and Goals approved; Option B selected; completed Technical Plan awaiting section review
 - Date: 2026-11-07
 - Predecessor: [discussion_summary.md](discussion_summary.md)
 - EGM stage: technical planning; implementation plan pending
 
 Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries. It does not approve the technical options below.
+
+The author then selected Option B in chat: "B is better". Local retrieval with hosted generation and the shared foundation below are selected. The expanded contracts and controls in this section remain proposed until Technical Plan review. Selection of B does not authorize paid requests or select a provider.
 
 ## Overview
 
@@ -56,14 +58,15 @@ These are question templates, not answered benchmark cases. On Day 2, bind them 
 
 - Resolved: the author approved the proposed reader, condition, and sample size with Overview and Goals.
 - Verify API access, data selection, and difficult records before promising the complete ten-session scope.
-- Select retrieval, storage, model, and interface choices in the next design stage after checking local resources and cost constraints.
+- Resolved: local SQLite, FAISS, BM25, FastAPI, and a bounded LangGraph workflow are the shared foundation of selected Option B.
+- Select an embedding model and hosted provider/model after checking compatibility and evaluating a representative workload. Confirm pricing, data handling, credentials, and a spending cap before live model requests.
 - Define the evaluation set and how the author will review criteria fidelity. A developer review is not clinical validation.
 
-## Technical Plan — options for author selection
+## Technical Plan — selected Option B
 
-This section proposes two complete starting architectures. Neither has been selected. Both retain the approved behavior and evaluation goals. Exact model and package versions will be checked during implementation; no dependency has been installed.
+Option B has been selected. Option A remains below as decision history for the later Alternatives section. Exact model and package versions will be checked during implementation; no dependency has been installed.
 
-### Shared proposed foundation
+### Selected foundation
 
 Use Python, a local SQLite database for study metadata and source passages, local text embeddings with a FAISS index for vector retrieval, and BM25 keyword retrieval. Combine ranked results rather than directly adding scores on different scales. Build the keyword baseline before the combined retriever so its effect can be measured.
 
@@ -73,9 +76,9 @@ Use a FastAPI service with a /api/v1 prefix and its interactive API documentatio
 
 Validate structured model responses against permitted evidence IDs. Reject invented IDs, return source wording where a generated explanation cannot be supported, and expose uncertainty. Matching a citation proves that the passage exists, not that the paraphrase is medically faithful; the labeled evaluation must inspect meaning as well.
 
-These are proposed components in both options and are included in the author's architecture choice. If any shared component needs a different approach, revise this section before selection.
+These components were included in both architecture options and are covered by the author's selection of B. The specific behavior below is submitted for Technical Plan review.
 
-### Option A — Local retrieval and local generation
+### Previous candidate A — Local retrieval and local generation
 
 Mechanism: download an embedding model and a small text-generation model, then run search and generation on this computer. After initial downloads and data collection, serving the stored sample can work without an external model API. The generation adapter must support explicit tool requests; reject a candidate that cannot pass the tool-calling smoke test.
 
@@ -83,7 +86,7 @@ Trade-offs: no model API usage charges and full local control, but model downloa
 
 Failure conditions: insufficient memory, unacceptable measured latency, inability to perform tool calls reliably, or poor criteria fidelity. Confirm hardware and benchmark a candidate before committing to it. A failure does not silently switch to a paid provider; bring the evidence back for an architecture revision.
 
-### Option B — Local retrieval with hosted generation
+### Selected B — Local retrieval with hosted generation
 
 Mechanism: store studies and embeddings locally, retrieve the relevant passages locally, and send only the question and selected public passages to a hosted model. The hosted model returns structured tool requests or an evidence-linked response. Keep the model behind an adapter so data collection and retrieval tests do not require network calls.
 
@@ -91,11 +94,73 @@ Trade-offs: avoids local generation hardware requirements, but adds API credenti
 
 Failure conditions: unavailable credentials, exhausted budget, timeouts, rate limits, or failed fidelity tests. Use bounded retries; return retrieved evidence with an explicit generation-unavailable result when the service fails. This fallback is distinct from a generated explanation.
 
-### Proposed flow under either option
+### Selected data flow
 
 ClinicalTrials.gov snapshot -> original source text and metadata -> criterion passages -> keyword and vector indexes -> combined retrieval -> selected evidence -> model adapter -> citation checks -> response.
 
-The generation adapter runs locally in A and calls a hosted service in B. Both options keep tests and local retrieval usable when generation is unavailable.
+The generation adapter calls the hosted service. Retrieval and ordinary tests remain local and usable when generation is unavailable.
+
+### Study snapshot and local storage
+
+The ingestion step saves original API responses and a manifest with the query, retrieved NCT IDs, retrieval time, and content hashes. After inspection on Day 2, freeze that manifest for the first evaluation. Refreshing data creates a new snapshot instead of overwriting the evidence used by earlier results. A query yielding fewer than 50 usable studies is reported explicitly rather than filled with unrelated records.
+
+SQLite stores studies and passages keyed by snapshot. Each study retains the original criteria, source URL, source update date when provided, recruitment status, and explicit missing values. Each passage stores its parent criterion/heading, source character offsets, and a stable identifier derived from snapshot, study, and offsets. Normalized search text is separate from original text. Derived comparisons and generated answers never replace source text.
+
+Persist indexes with a manifest containing the snapshot hash, passage ID mapping, embedding model identifier/revision, dimensions, normalization, and chunking configuration. Refuse a mismatched index and require rebuilding it. This prevents the correct-looking citation from pointing to the wrong data after a refresh.
+
+### Retrieval and context assembly
+
+Apply structured study filters before selecting retrieval candidates. Search both the BM25 and vector indexes within that permitted study set. Merge rankings using reciprocal rank fusion, then remove duplicate passages. An initial search returns at most five ranked passages. Treat that limit as an initial configuration to evaluate, not an optimized value.
+
+For a question about a selected study, constrain retrieval to its ID. For a two-study comparison, retrieve evidence independently from each study and preserve the two evidence groups in the prompt. Include the relevant parent criterion and heading so that qualifiers survive chunk boundaries. If context exceeds the configured model budget, reduce the number of complete passages and report the limit; never silently cut a threshold or exception in half.
+
+Return search results as evidence snippets and rankings, not as eligibility scores. A low search score or a missing top-five result does not establish that a criterion is absent from the whole record. Before saying "not stated in this stored record," inspect that study's full stored eligibility text. If it cannot fit within the review budget or remains ambiguous, return "unable to determine from the reviewed evidence" instead.
+
+### Explicit tools and bounded agent state
+
+Expose three read-only application tools: search criteria using a query and validated filters; fetch the original eligibility text for an existing NCT ID in the snapshot; and retrieve evidence for exactly two existing NCT IDs. Tool inputs use validated schemas and result-size limits. The model cannot issue SQL, arbitrary network requests, shell commands, or writes to study records.
+
+Use LangGraph to run request validation, model tool selection, tool execution, answer construction, and response validation. Start with a maximum of three tool executions and a hard graph step limit. All model calls share the same request budget. Stop with the collected evidence and an explicit incomplete result if the limit is reached.
+
+Save a session ID, snapshot ID, selected study IDs, bounded recent conversation, evidence IDs, and workflow checkpoints locally. Sessions must not silently switch snapshots. A follow-up retrieves current evidence from the pinned snapshot; it does not use a previous generated answer as factual support. This first version runs on localhost for one learner; exposing it publicly requires a separate authentication and session-isolation design.
+
+### Hosted adapter, citations, and fallback behavior
+
+The provider-independent adapter accepts the question, selected evidence, tool definitions, and call limits. It returns typed tool requests or structured claims with evidence IDs. Require native tool/function calling and structured-response support from the selected provider/model, then verify both with a small smoke test. Mock responses exercise control flow only; they are not evidence of real model quality.
+
+The application resolves evidence IDs to quotes, source offsets, study URLs, and snapshot dates itself. For every claimed citation, check that the passage belongs to the permitted study and snapshot, and that the displayed quote matches the saved original text. Reject unknown IDs and unsupported output structure. Numeric and negation checks can flag suspicious changes, but cannot prove semantic fidelity. Show the original criterion beside its explanation and include ambiguous paraphrases in manual evaluation.
+
+Distinguish answered, not-stated-in-record, insufficient-reviewed-evidence, generation-unavailable, and review-needed outcomes. With no provider configured, users can search and read exact source passages. Provider errors or validation failures return evidence with an explicit unavailable/unverified explanation state. Do not present source excerpts as a successfully generated answer.
+
+### Initial API contract
+
+- GET /api/v1/studies: list studies and structured filters within the current snapshot.
+- GET /api/v1/studies/{nct_id}: return a study's saved original criteria and provenance.
+- POST /api/v1/search: query the local indexes without a hosted call.
+- POST /api/v1/questions: answer a question, optionally scoped to selected study IDs and a session; comparison uses exactly two selected IDs.
+
+Responses include the snapshot ID/date and source evidence. Question responses add outcome, claims when verified, citations, and a request ID. Reject malformed IDs, unknown studies/snapshots, empty questions, and inputs beyond documented limits. Provider outages are explicit service failures with available source evidence. Interactive API documentation is the first interface; a custom frontend is a later enhancement.
+
+### Cost, privacy, and operational limits
+
+Keep credentials in environment variables excluded from Git. Only public trial excerpts and intended non-sensitive demo questions are sent to the provider. The application is not designed for personal patient narratives; the demo instructs readers to use fictional examples. A text filter cannot guarantee that a user has not entered private information.
+
+Before enabling live generation, record provider/model, model context limit, verified current input/output prices, maximum input/output tokens, request deadline, and a user-agreed session spending cap. Refuse live calls until these are configured. Reserve a conservative upper cost bound before each attempted call, including retries; reconcile reported usage afterward and retain the reservation when usage is unknown. Do not claim an application counter is a provider billing guarantee. Use provider-side limits where available.
+
+Bound retries for transient errors; every retry consumes the request call and cost allowance. Cache successful answers only under a key containing the snapshot, question scope, model, prompt version, and retrieval configuration. Log request IDs, workflow steps, evidence IDs, durations, outcome, model identifier, and token usage when returned. Avoid logging credentials or complete user questions by default.
+
+### Verification tied to product goals
+
+Create source-verified fixtures before writing assertions. Cover offset/citation integrity, missing values, units, negation, exceptions, cross-study evidence leakage, invalid tool arguments, exhausted call budgets, provider failures, and stale indexes with pytest. Use FastAPI integration tests for validation, response schemas, and search availability without credentials. An offline fake hosted adapter supports deterministic CI; live evaluation is an explicit separate command.
+
+Grow the five question templates into a small manually labeled development set and a separate held-out set. Include answerable, absent-information, ambiguous, comparison, and participation questions. Record relevant passage IDs, expected source wording, and expected outcome before tuning. Measure evidence recall at five, correct citations divided by all citations, manually checked claim fidelity, abstention behavior, latency, and cost. Compare keyword-only, vector-only, and combined retrieval on the same snapshot. Publish per-case failures and sample sizes; a small benchmark does not establish clinical safety.
+
+### Critical user journeys
+
+1. Given a frozen sample, a reader searches for a criterion. The application returns ranked source snippets, study IDs, and the snapshot date without requiring hosted credentials.
+2. Given a selected study, a reader asks about a threshold. The application retrieves the original criterion and returns a source-linked explanation preserving quantities and exceptions, or an explicit uncertainty outcome.
+3. Given two selected studies, a reader compares criteria. The application keeps evidence attributed to each study and handles missing or ambiguous requirements separately.
+4. Given unavailable generation or a reached budget, the application explains that generation is unavailable and still offers local evidence. It never labels a failed call as a complete answer.
 
 ### Cost and feasibility evidence
 
@@ -112,6 +177,6 @@ The generation adapter runs locally in A and calls a hosted service in B. Both o
 
 ## Next sections
 
-After the author chooses an architecture, complete the technical plan and its section review. Then evaluate alternatives and write detailed file-level implementation tasks through the EGM gates. No EGM Goldfish review has run.
+Review this completed Technical Plan. After approval, draft Alternatives Considered, then the detailed file-level implementation tasks through EGM's section gates. Exact hosted model selection and a spending cap remain prerequisites for live generation, not for data ingestion or local retrieval work. No EGM Goldfish review has run.
 
 *Drafted with EGM*
