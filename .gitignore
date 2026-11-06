@@ -1,0 +1,26 @@
+# Credentials and local environments
+.env
+.env.*
+!.env.example
+.venv/
+.venv-win/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Downloaded data, generated indexes, local databases, and traces
+data/raw/
+data/processed/
+indexes/
+*.sqlite
+*.sqlite3
+logs/
+
+# Editor and operating system files
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

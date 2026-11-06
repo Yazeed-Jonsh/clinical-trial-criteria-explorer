@@ -1,0 +1,36 @@
+# Tasks and learning record
+
+## Day 1 — Define the product
+
+- [x] Preserve the planning conversation as predecessor notes.
+- [x] Draft Overview, Problem, Goals, and boundaries using EGM.
+- [x] Write five starter evaluation question templates.
+- [x] Create documentation and agent instructions.
+- [ ] Author reviews Overview and Goals.
+- [ ] Draft technical plan after the section review.
+- [ ] Review alternatives and detailed implementation tasks through the EGM gates.
+- [ ] Finish Day 1 with an approved scope and a committed documentation milestone.
+
+## Planned sequence after Day 1
+
+2. Fetch and normalize public trial records; bind example questions to source evidence.
+3. Establish keyword search and a measured baseline.
+4. Add embeddings and vector retrieval.
+5. Combine retrieval results and structured filters.
+6. Produce cited explanations with missing-information behavior.
+7. Introduce explicit tools and saved workflow state.
+8. Add a versioned API and structured logs.
+9. Run automated tests and evaluation, including fidelity failures.
+10. Fix observed failures and prepare reproducible GitHub documentation.
+
+This sequence is provisional until the technical design is reviewed. Reduce scope or record extra effort if the one-hour sessions prove insufficient.
+
+## Learning note for Day 1
+
+A specification describes observable behavior. Acceptance criteria make that behavior checkable. An architecture explains the mechanism that will implement it. A question template becomes an evaluation case only after it has a verified source, expected answer, and scoring rule.
+
+Author exercise: explain why an unstated criterion does not establish that a participant meets it. Answer during the section review.
+
+## Evidence
+
+Documentation drafted. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Author approval and EGM Goldfish review are pending.
