@@ -6,7 +6,8 @@
 - [x] Draft Overview, Problem, Goals, and boundaries using EGM.
 - [x] Write five starter evaluation question templates.
 - [x] Create documentation and agent instructions.
-- [ ] Author reviews Overview and Goals.
+- [x] Author reviews Overview and Goals: approved in chat, "yes I approve them".
+- [ ] Author selects a technical option from design_draft.md.
 - [ ] Draft technical plan after the section review.
 - [ ] Review alternatives and detailed implementation tasks through the EGM gates.
 - [ ] Finish Day 1 with an approved scope and a committed documentation milestone.
@@ -33,4 +34,4 @@ Author exercise: explain why an unstated criterion does not establish that a par
 
 ## Evidence
 
-Documentation drafted. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Author approval and EGM Goldfish review are pending.
+Overview and Goals approved. Two technical options drafted for author selection. Python 3.12.7 detected; hardware queries were denied by Windows. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Technical approval and EGM Goldfish review are pending.

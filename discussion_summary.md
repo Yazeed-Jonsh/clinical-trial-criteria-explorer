@@ -37,4 +37,4 @@ No architecture alternatives have been evaluated or rejected by the author yet. 
 
 ## EGM handoff
 
-Use this document as the predecessor for egm-draft. The author's instruction to start Day 1 using EGM authorizes drafting the initial Overview and Goals section. Obtain the required section review before drafting the architecture. No fresh-context review has run.
+Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them". The proposed student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are now accepted. Architecture options remain open. No fresh-context review has run.

@@ -1,10 +1,12 @@
 # Clinical Trial Criteria Explorer
 
 - Author: Yazeed-Jonsh
-- Status: Draft; Overview and Goals awaiting author review
+- Status: Draft; Overview and Goals approved; architecture options awaiting author selection
 - Date: 2026-11-07
 - Predecessor: [discussion_summary.md](discussion_summary.md)
-- EGM stage: initial product definition; architecture and implementation plan pending
+- EGM stage: technical planning; implementation plan pending
+
+Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries. It does not approve the technical options below.
 
 ## Overview
 
@@ -52,13 +54,64 @@ These are question templates, not answered benchmark cases. On Day 2, bind them 
 
 ## Open Questions
 
-- Confirm the proposed reader, condition, and sample size during this section's review.
+- Resolved: the author approved the proposed reader, condition, and sample size with Overview and Goals.
 - Verify API access, data selection, and difficult records before promising the complete ten-session scope.
 - Select retrieval, storage, model, and interface choices in the next design stage after checking local resources and cost constraints.
 - Define the evaluation set and how the author will review criteria fidelity. A developer review is not clinical validation.
 
+## Technical Plan — options for author selection
+
+This section proposes two complete starting architectures. Neither has been selected. Both retain the approved behavior and evaluation goals. Exact model and package versions will be checked during implementation; no dependency has been installed.
+
+### Shared proposed foundation
+
+Use Python, a local SQLite database for study metadata and source passages, local text embeddings with a FAISS index for vector retrieval, and BM25 keyword retrieval. Combine ranked results rather than directly adding scores on different scales. Build the keyword baseline before the combined retriever so its effect can be measured.
+
+Keep the original eligibility text and stable passage IDs. Search text may be normalized, but citations must resolve to original source text and the correct study snapshot. Split text at criterion boundaries and retain parent context where a list depends on a heading or exception.
+
+Use a FastAPI service with a /api/v1 prefix and its interactive API documentation for the initial interface. Add a bounded LangGraph workflow with explicitly allowed search, study-detail, and comparison tools after the basic retrieval pipeline works. Save selected study IDs and workflow state per session. Previous generated answers are not evidence for later answers.
+
+Validate structured model responses against permitted evidence IDs. Reject invented IDs, return source wording where a generated explanation cannot be supported, and expose uncertainty. Matching a citation proves that the passage exists, not that the paraphrase is medically faithful; the labeled evaluation must inspect meaning as well.
+
+These are proposed components in both options and are included in the author's architecture choice. If any shared component needs a different approach, revise this section before selection.
+
+### Option A — Local retrieval and local generation
+
+Mechanism: download an embedding model and a small text-generation model, then run search and generation on this computer. After initial downloads and data collection, serving the stored sample can work without an external model API. The generation adapter must support explicit tool requests; reject a candidate that cannot pass the tool-calling smoke test.
+
+Trade-offs: no model API usage charges and full local control, but model downloads consume storage and running generation consumes memory and CPU or GPU resources. Small models may struggle with long criteria, negation, or structured tool responses.
+
+Failure conditions: insufficient memory, unacceptable measured latency, inability to perform tool calls reliably, or poor criteria fidelity. Confirm hardware and benchmark a candidate before committing to it. A failure does not silently switch to a paid provider; bring the evidence back for an architecture revision.
+
+### Option B — Local retrieval with hosted generation
+
+Mechanism: store studies and embeddings locally, retrieve the relevant passages locally, and send only the question and selected public passages to a hosted model. The hosted model returns structured tool requests or an evidence-linked response. Keep the model behind an adapter so data collection and retrieval tests do not require network calls.
+
+Trade-offs: avoids local generation hardware requirements, but adds API credentials, network dependency, provider limits, and usage costs. Quality still requires measurement. Select the provider and model, verify pricing and data handling, and agree on a spending cap before live requests.
+
+Failure conditions: unavailable credentials, exhausted budget, timeouts, rate limits, or failed fidelity tests. Use bounded retries; return retrieved evidence with an explicit generation-unavailable result when the service fails. This fallback is distinct from a generated explanation.
+
+### Proposed flow under either option
+
+ClinicalTrials.gov snapshot -> original source text and metadata -> criterion passages -> keyword and vector indexes -> combined retrieval -> selected evidence -> model adapter -> citation checks -> response.
+
+The generation adapter runs locally in A and calls a hosted service in B. Both options keep tests and local retrieval usable when generation is unavailable.
+
+### Cost and feasibility evidence
+
+- Python 3.12.7 was detected on this machine.
+- Windows denied the memory, CPU, and GPU queries. Hardware capacity and local inference performance remain unverified.
+- No models, packages, or study records have been downloaded. No costs or latency measurements have been recorded.
+- At this sample size the proposed tools serve learning goals; the benchmark must establish whether combined retrieval improves on keyword search.
+
+### Technical references checked during planning
+
+- [FAISS documentation](https://faiss.ai/): vector similarity search, Python wrappers, and CPU installation.
+- [SQLite appropriate uses](https://www.sqlite.org/whentouse.html): local application storage and its concurrency trade-offs.
+- [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence): session checkpoints and state scoped to a thread.
+
 ## Next sections
 
-Critical user journeys, architecture, alternatives, detailed file-level tasks, and verification commands will be drafted after author review of Overview and Goals. No EGM Goldfish review has run.
+After the author chooses an architecture, complete the technical plan and its section review. Then evaluate alternatives and write detailed file-level implementation tasks through the EGM gates. No EGM Goldfish review has run.
 
 *Drafted with EGM*
