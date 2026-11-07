@@ -5,7 +5,7 @@ These instructions apply throughout this repository.
 EGM artifact directory: .
 
 - Read README.md, discussion_summary.md, docs/designs/clinical-trial-criteria-explorer.md, and TASKS.md at session start. design_draft.md is the retained drafting record.
-- EGM drafting is complete and the design has author approval. Fresh-context EGM review is pending. Record review findings and author decisions before revising approved contracts; do not claim a pending review has passed.
+- EGM drafting is complete and the design has author approval. The five-stage consolidated EGM review is complete with open findings in consolidated_review_report.md. Read that report when resolving findings. Record author decisions before revising approved contracts; review completion is not a clean or converged verdict.
 - Use the installed EGM skill instructions and actual fresh-context reviewers when its review stage is authorized. Never label a parent-session self-review as a Goldfish review.
 - Teach one small increment at a time. Explain its purpose and one failure case; give the author a short exercise.
 - Implement only tasks supported by the agreed design after leaving the design workflow for implementation.
