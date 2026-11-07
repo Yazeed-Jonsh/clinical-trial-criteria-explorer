@@ -33,8 +33,12 @@ Fine-tuning is outside the agreed first-project scope. The author selected Optio
 
 ## Alternatives
 
-The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. The documented trade-offs include local hardware requirements versus network dependency, credentials, and usage costs. The author did not give a separate rejection rationale; do not invent one. Alternatives Considered is drafted and awaiting section review. It also preserves the existing ClinicalTrials.gov interface as a product baseline rather than claiming that it is inadequate.
+The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. The documented trade-offs include local hardware requirements versus network dependency, credentials, and usage costs. The author did not give a separate rejection rationale; do not invent one. The author approved Alternatives Considered. It also preserves the existing ClinicalTrials.gov interface as a product baseline rather than claiming that it is inadequate.
 
 ## EGM handoff
 
-Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", chose Option B: "B is better", and approved the completed Technical Plan: "yes I approve it". The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. Alternatives Considered review is next. No provider/model or spending cap is selected, and no fresh-context review has run.
+Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", chose Option B: "B is better", approved the completed Technical Plan: "yes I approve it", and approved Alternatives Considered. The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. Detailed Implementation review is next. No provider/model or spending cap is selected, and no fresh-context review has run.
+
+## Author's coding-session requirements
+
+Explain purpose, architecture, and concepts before coding. Implement one small feature at a time. Wait for the author's prediction before running relevant tests. Explain changed files and data flow, provide one exercise without its solution, and use debugging hints before complete fixes. Include meaningful tests, evaluation, and documentation. Wait for explicit author approval before starting the next feature. These requirements apply during implementation and are saved in AGENTS.md.

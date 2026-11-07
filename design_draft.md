@@ -1,14 +1,16 @@
 # Clinical Trial Criteria Explorer
 
 - Author: Yazeed-Jonsh
-- Status: Draft; Overview and Goals and Technical Plan approved; Alternatives Considered awaiting review
+- Status: Draft; Overview and Goals, Technical Plan, and Alternatives approved; Detailed Implementation awaiting review
 - Date: 2026-11-07
 - Predecessor: [discussion_summary.md](discussion_summary.md)
-- EGM stage: alternatives review; detailed implementation plan pending
+- EGM stage: detailed implementation review
 
 Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries.
 
 The author then selected Option B in chat: "B is better", and approved the completed Technical Plan: "yes I approve it". Local retrieval with hosted generation and the technical contracts below are approved. Live model requests still require a provider/model choice and an agreed spending cap.
+
+The author approved Alternatives Considered in chat: "I approve the approve Alternatives Considered". Detailed Implementation below is a new draft for review, not authorization to implement all features in one session.
 
 ## Overview
 
@@ -203,8 +205,130 @@ Revisit this choice if the budget cannot support the workload, provider requirem
 
 The predecessor identifies the existing website as the strongest product alternative: a reader can inspect original records without maintaining this application. The learning project adds the planned evidence-linked comparisons and retrieval experiments. Its value must be demonstrated on a benchmark. The author approved building the project; that does not establish that the original website is inadequate or rejected for general use.
 
+## Detailed Implementation Plan
+
+### Execution rules and scope
+
+Implement the milestones below sequentially. A milestone may take several short sessions; ten one-hour sessions remain an effort target, not a delivery guarantee. Complete one feature's explanation, code, author prediction, tests, review, and exercise before requesting permission for the next feature. Approval of this document does not waive those feature boundaries.
+
+Before writing code, explain the feature's purpose, input/output shape, data flow, prerequisites, and one trade-off. After writing its tests, ask the author to predict an important outcome and wait before running them. Explain any failure with a hint before supplying a complete fix to the author's exercise. Record the attempt and measured result without writing the exercise solution in advance.
+
+Use the package name trial_explorer under src/. Test files sit under tests/. The paths below are relative to this repository. All source and test paths are planned creations; only documentation is being modified during EGM drafting. No existing files are scheduled for deletion.
+
+### Unified file and feature list
+
+#### 1. Normalize one trial record — first coding feature
+
+Purpose: transform a single API-shaped dictionary into a predictable local study record while preserving original eligibility wording. This pure transformation does not fetch data or call a model. A pure function returns a result from its inputs without network or database effects, which makes failures easier to isolate.
+
+Create these files:
+
+- ./pyproject.toml — declare the package, supported Python range, editable installation, pytest configuration, and dependency groups. Begin with only the dependencies required by this feature; introduce the larger stack at its corresponding milestone after compatibility checks.
+- ./src/trial_explorer/__init__.py — make the package importable; do not trigger network calls or database creation on import.
+- ./src/trial_explorer/models.py — define Study with nct_id, title, criteria_text, source_url, source_updated_at, retrieved_at, snapshot_id, and recruitment_status. Require a valid NCT identifier; retain missing optional values explicitly. Distinguish a missing criteria field from a present empty string. Preserve the original supplied text exactly.
+- ./src/trial_explorer/normalize.py — implement normalize_study(raw_record, retrieved_at, snapshot_id). Read only documented source fields, validate required identifiers, construct a source URL from the validated ID, and return Study. Report malformed fields instead of guessing or silently coercing them.
+- ./tests/test_normalize.py — cover one valid record, missing optional metadata, missing criteria, empty criteria, malformed ID, malformed nested fields, and exact preservation of negation, units, and whitespace. Use small fictional dictionaries in this test module and label them as synthetic.
+
+Modify ./README.md with the first actually working installation and test commands, ./TASKS.md with observed feature progress, and create ./docs/learning_log.md to record explanation, author prediction, test result, exercise attempt, and next-feature approval. Exercise: add one new synthetic edge-case test after the author sees the implemented transformation; do not supply the answer in advance.
+
+Acceptance: normalization is reproducible without credentials or network access; optional missing data stays missing; the original criteria string is unchanged. Ask the author to predict how a missing optional field differs from a missing NCT ID before running the tests.
+
+#### 2. Collect a reproducible public snapshot
+
+Create ./src/trial_explorer/ingest.py to fetch ClinicalTrials.gov records with pagination, explicit timeouts, bounded retries, deduplication by NCT ID, and the agreed condition query. Verify the current source schema and pagination behavior against official documentation before implementing. Route every record through normalization and report rejected records with reasons.
+
+Create ./src/trial_explorer/snapshots.py to write immutable snapshots under ./data/raw/<snapshot_id>/ and a manifest containing the exact query, selected NCT IDs, retrieval timestamp, response hashes, selection rule, and rejected-record count. Refuse to overwrite a snapshot ID. Preserve raw responses separately from normalized records. Select records in a documented order so the sample can be explained; never claim this sample is representative of all trials.
+
+Create ./src/trial_explorer/cli.py with explicit fetch and inspect-snapshot commands. Add the package command entry point to ./pyproject.toml. Create ./tests/test_ingest.py for stubbed multi-page responses, duplicates, timeouts, and partial failures, and ./tests/test_snapshots.py for hash consistency, manifest accuracy, and overwrite refusal. Stubbed HTTP responses must never run real network calls in ordinary tests.
+
+Create ./docs/data_provenance.md to document the actual query, selection, schema mapping, snapshot regeneration, and observed missing fields. Keep downloaded data ignored by Git. Update ./README.md and ./TASKS.md. Acceptance: a frozen manifest identifies every saved record; partial collection is explicit and a failed fetch is never labeled a complete snapshot.
+
+#### 3. Store evidence and preserve its location
+
+Extend ./src/trial_explorer/models.py with Passage carrying snapshot_id, nct_id, passage_id, heading, parent context, original-text offsets, original text, and separate search text.
+
+Create ./src/trial_explorer/passages.py to segment eligibility text at criterion boundaries while retaining headings and exceptions. Character offsets refer to the exact stored Python string, not encoded byte offsets. Group ambiguous nested criteria rather than severing their qualifiers. Stable passage IDs include the snapshot, study, and offsets.
+
+Create ./src/trial_explorer/store.py to create a versioned SQLite schema, insert snapshots/studies/passages transactionally, enforce composite snapshot/study relationships, and expose parameterized read queries. Treat original snapshots as immutable. Return explicit absent records rather than empty invented studies. Store generated output separately from source evidence.
+
+Create ./tests/test_passages.py for exact substring reconstruction, Unicode, parent context, headings, exceptions, and stable IDs. Create ./tests/test_store.py for round trips, rollback, duplicate handling, and isolation between snapshots. Use temporary SQLite files in tests. Extend ./src/trial_explorer/cli.py with an explicit import-snapshot command and update documentation. Acceptance: every passage resolves to the original text in exactly one snapshot/study pair.
+
+#### 4. Establish keyword search and a labeled baseline
+
+Create ./src/trial_explorer/retrieval.py with a shared search contract returning passage IDs, rank, search method, and provenance. Implement BM25 first. Validate allowed study filters and return at most the configured result limit. Unsupported filters produce a validation error; they must not silently broaden the search.
+
+Create ./eval/cases.dev.jsonl and ./eval/cases.heldout.jsonl only after the author has inspected real source records. Target 15 development cases and 10 held-out cases, including unanswerable, ambiguous, and comparison examples. Every case records snapshot ID, selected study IDs, expected evidence IDs or explicitly absent evidence, expected outcome, and source-verified notes. Synthetic cases remain clearly labeled and separate from real-record measurements. Do not use hosted model guesses as ground truth.
+
+Create ./src/trial_explorer/evaluate.py to read these cases, compute evidence recall at five for cases with positive evidence, exclude explicitly inapplicable cases with counts, and write per-case results with configuration and snapshot hashes. Keep held-out labels out of retrieval tuning. Create ./tests/test_retrieval.py for filtering and deterministic ranking behavior, and ./tests/test_evaluate.py for manually calculable metric cases and zero-denominator handling.
+
+Extend ./src/trial_explorer/cli.py with search and evaluate-retrieval commands. Create ./docs/evaluation.md for case construction, rubric, development/held-out separation, and actual baseline results. Acceptance: baseline scores have denominators and reproducible inputs; no expected improvement is fabricated.
+
+#### 5. Add embeddings and combined retrieval
+
+Create ./src/trial_explorer/embeddings.py with a local embedding adapter and ./src/trial_explorer/indexes.py for the FAISS index, passage mapping, and manifest checks. Before model downloads, choose and record an embedding model/revision using its official model card, license, Windows/Python compatibility, memory needs, and a short measured sample. This selection is a recorded prerequisite, not an implicit dependency choice.
+
+Update ./src/trial_explorer/retrieval.py with vector retrieval and reciprocal rank fusion. Start with a simple exact vector index for the small sample and normalized vectors consistent with its similarity metric. Persist the model revision, vector dimension, normalization, passage mapping, chunking configuration, and snapshot hash. Refuse stale or mismatched indexes. Apply study constraints to candidate selection so irrelevant top results cannot crowd out an allowed study.
+
+Create ./tests/test_indexes.py for save/load consistency, stale manifest rejection, and correct ID mapping. Extend ./tests/test_retrieval.py with exact tiny vectors, fusion behavior, ties, and filter isolation. Tiny vectors verify retrieval logic without downloading a model. Test actual embeddings separately and label that result. Update dependencies and CLI index-building commands. Compare keyword-only, vector-only, and combined retrieval on the same cases, saving actual results in ./docs/evaluation.md.
+
+#### 6. Build cited question responses with a hosted adapter
+
+Create ./src/trial_explorer/config.py for validated runtime settings and ./src/trial_explorer/providers/__init__.py for a package boundary. Create ./src/trial_explorer/providers/base.py defining the hosted adapter contract and ./src/trial_explorer/providers/hosted.py for the single provider selected by the author. Implement no provider-specific calls until the provider/model decision, current prices/data handling, token limits, and spending cap have been recorded in ./docs/model_decisions.md. Local work and fake-adapter tests can proceed before this decision.
+
+Create ./src/trial_explorer/prompts.py for versioned instructions that distinguish source data from executable instructions. Create ./src/trial_explorer/answers.py to assemble bounded context, ask for structured claims, and assign the approved response outcomes. Create ./src/trial_explorer/citations.py to resolve permitted evidence IDs and verify exact quotes, source offsets, study scope, and snapshot provenance. Extend ./src/trial_explorer/models.py with request, claim, citation, and outcome schemas.
+
+Create ./src/trial_explorer/budget.py for per-request token/call allowances and session cost reservations, including retries and unknown usage. Disable live generation unless all required pricing and limit settings exist. Create ./.env.example with empty credential fields and documented configuration names; keep actual credentials untracked. All default tests use a fake adapter defined in ./tests/fakes.py.
+
+Create ./tests/test_answers.py for unsupported claims, no evidence, failed generation, context truncation boundaries, and comparison scope; ./tests/test_citations.py for wrong IDs/quotes/snapshots and preserved source wording; and ./tests/test_budget.py for reservation, reconciliation, unknown usage, and exhausted limits. Explicitly verify that a search miss is not treated as proof of absence; full-record review is required for that outcome.
+
+Update ./docs/model_decisions.md with actual provider/model capabilities, verified prices and date, smoke-test observations, cost configuration, and limitations once chosen. Acceptance: verified provenance is distinct from semantic fidelity; invalid explanations become explicit fallback outcomes with original evidence. API billing controls remain estimates rather than guarantees.
+
+#### 7. Add bounded tool calling and saved sessions
+
+Create ./src/trial_explorer/tools.py for the three approved validated read-only tools. Create ./src/trial_explorer/workflow.py to assemble the LangGraph flow and checkpointed state. Extend ./src/trial_explorer/store.py with session and checkpoint persistence support using the compatible LangGraph persistence integration selected during dependency installation.
+
+Enforce at most three tool executions per request, a graph step limit, request deadlines, and the shared model call/cost budget. Unknown tools and invalid arguments stop with an explicit error. Pin the session to its snapshot; validate incoming study IDs against it. Do not reuse old generated prose as new evidence.
+
+Create ./tests/test_tools.py for schemas and study scope and ./tests/test_workflow.py for tool dispatch, hostile source instructions, repeated tool loops, restart/resume, session isolation, and snapshot changes. A fake adapter proves control-flow behavior; separately record a live tool-calling smoke test after author prediction and spending authorization. Acceptance: the model can select only allowed operations, and loop termination remains under application control.
+
+#### 8. Expose the local API and instrument requests
+
+Create ./src/trial_explorer/api.py for GET /api/v1/studies, GET /api/v1/studies/{nct_id}, POST /api/v1/search, and POST /api/v1/questions. Wire the approved services without duplicating retrieval rules. Validate study IDs, session IDs, snapshot scope, question length, and comparison cardinality. Include snapshot and request IDs in responses. Bind the documented development command to localhost.
+
+Create ./src/trial_explorer/telemetry.py for structured, redacted events with request/session IDs, stage timings, evidence IDs, outcome, model identifier, and token usage when supplied. Extend ./src/trial_explorer/store.py with the approved successful-answer cache. Key it on snapshot, question scope, model, prompt version, retrieval configuration, and relevant session context; cached output cannot leak between sessions with different context. Do not cache failed generations.
+
+Create ./tests/test_api.py for response contracts, malformed/unknown IDs, filtered search without hosted credentials, provider failures, and per-study comparison attribution. Create ./tests/test_telemetry.py for required fields and credential/raw-question exclusion, and extend ./tests/test_store.py for cache invalidation and isolation. Update ./README.md with working API examples and the evidence flow. Acceptance: a provider outage leaves local search usable and is visible as a generation failure, never a successful explanation.
+
+#### 9. Evaluate and prepare a portfolio release
+
+Extend ./src/trial_explorer/evaluate.py with question-response evaluation: outcome correctness, citation validity, manual claim-fidelity rubric, latency, and estimated/reported usage cost. Automated checks do not replace the author's manual reading of paraphrases. Preserve detailed failed cases and distinguish development tuning from the final held-out run.
+
+Create ./.github/workflows/ci.yml for offline pytest and static checks. Modify ./pyproject.toml to define those checks. Create ./requirements.lock with exact resolved versions for the tested Python/Windows environment and document its generation and platform scope; do not claim it covers untested platforms. CI uses fake adapters and small fixtures, no provider secrets, network dataset download, or large model download. A separate live evaluation is opt-in and budgeted.
+
+Create ./docs/results.md with measured results, case counts, reproducibility metadata, representative failures, runtime environment, and explicit limitations. Create ./docs/architecture.md to explain the implemented data path after it exists. Modify ./README.md with verified setup/run/test/evaluation commands and demo examples; ./TASKS.md with completion evidence; ./docs/learning_log.md with actual exercises and author decisions; and ./AGENTS.md to reflect the transition from EGM design to approved incremental implementation. Update ./discussion_summary.md and ./design_draft.md if reviewed findings change a contract. Modify ./.gitignore only when additional generated paths need exclusion; keep ./eval/ labels and documentation tracked.
+
+Finalize the design as ./docs/designs/clinical-trial-criteria-explorer.md after reconciliation with the predecessor and author approval of its destination. Create ./docs/designs/SITEMAP.md to point to it if a design index is useful at finalization. Finalizing this document and running a fresh EGM review are design tasks, distinct from implementing application features.
+
+### Verification commands and required evidence
+
+The following are planned commands, not commands already run or promises that dependencies are installed. In each coding session, wait for the author's prediction before relevant execution.
+
+- Setup: python -m venv .venv, then .venv/Scripts/python.exe -m pip install -e ".[dev]" after dependency definitions exist. Retain a tested dependency lock once resolved.
+- Feature tests: .venv/Scripts/python.exe -m pytest tests/test_normalize.py -q for the first feature; replace the selected test path with the milestone's specific tests afterward.
+- Complete offline suite at release: .venv/Scripts/python.exe -m pytest -q. No paid requests or network downloads occur in this suite.
+- Static checks at release: .venv/Scripts/python.exe -m ruff check . and .venv/Scripts/python.exe -m ruff format --check . after their project configuration exists.
+- Application: .venv/Scripts/python.exe -m uvicorn trial_explorer.api:app --host 127.0.0.1 --port 8000 after the API milestone exists.
+- Data and retrieval evaluation: the trial-explorer CLI defined in ./pyproject.toml exposes fetch, inspect-snapshot, import-snapshot, build-index, search, evaluate-retrieval, and evaluate-answers subcommands with explicit snapshot/config/case/output paths. evaluate-answers requires an explicit live-generation opt-in for hosted requests.
+- Release evidence: all applicable offline tests pass; every designated unanswerable release case produces its expected uncertainty outcome; invalid citations are rejected in adversarial fixtures; actual benchmark scores and failures are reported without invented performance targets.
+
+Do not impose a coverage percentage without evidence that it improves verification. Test difficult behavior and failure paths, including source corruption, rather than writing assertions that merely repeat the implementation.
+
+### Reconciliation and remaining prerequisites
+
+This plan implements the approved local-storage, local-retrieval, hosted-generation architecture. It does not select a new external interface or model provider. The author must still choose an embedding model and hosted model at their respective milestones, with measured compatibility and costs. If evidence requires a contract or architecture change, return it for a design decision before implementation.
+
 ## Next sections
 
-Review Alternatives Considered, then draft the detailed file-level implementation tasks through EGM's next section gate. Hosted model selection and a spending cap remain prerequisites for live generation, not for ingestion or local retrieval. No EGM Goldfish review has run.
+Review Detailed Implementation. After approval, reconcile the complete draft against its predecessor, finalize it at an author-approved destination, and hand off to EGM's fresh-context review. No EGM Goldfish review has run, no implementation tests have run, and no code has been written.
 
 *Drafted with EGM*

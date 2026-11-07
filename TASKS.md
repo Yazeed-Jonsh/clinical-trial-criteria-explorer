@@ -11,8 +11,10 @@
 - [x] Draft technical plan after the section review.
 - [x] Author reviews the completed Technical Plan: approved in chat, "yes I approve it".
 - [x] Draft Alternatives Considered from predecessor notes.
-- [ ] Author reviews Alternatives Considered.
-- [ ] Draft and review detailed implementation tasks through the EGM gate.
+- [x] Author reviews Alternatives Considered: approved in chat.
+- [x] Draft detailed file-level implementation tasks and verification commands.
+- [ ] Author reviews Detailed Implementation.
+- [ ] Reconcile and finalize the design through EGM's finalization gate.
 - [ ] Finish Day 1 with an approved scope and a committed documentation milestone.
 
 ## Planned sequence after Day 1
@@ -37,4 +39,4 @@ Author exercise: explain why an unstated criterion does not establish that a par
 
 ## Evidence
 
-Overview and Goals approved; Option B selected. Completed Technical Plan drafted with retrieval, evidence provenance, bounded tools, API contracts, state, cost limits, and verification. Python 3.12.7 detected; hardware queries were denied by Windows. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Technical Plan approved. Alternatives Considered drafted for section review; detailed implementation and EGM Goldfish review remain pending.
+Overview and Goals, Technical Plan, and Alternatives Considered approved; Option B selected. Detailed Implementation drafted with specific file paths, feature acceptance criteria, and verification commands. Python 3.12.7 detected; hardware queries were denied by Windows. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Detailed Implementation approval, design finalization, and EGM Goldfish review remain pending.
