@@ -1,10 +1,10 @@
 # Clinical Trial Criteria Explorer
 
 - Author: Yazeed-Jonsh
-- Status: Author-approved design content; final destination confirmation pending
+- Status: Approved by author; fresh EGM review pending
 - Date: 2026-11-07
 - Predecessor: [discussion_summary.md](discussion_summary.md)
-- EGM stage: finalization; destination confirmation pending
+- EGM stage: drafting complete; handoff to fresh-context review
 
 Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries.
 
@@ -331,6 +331,6 @@ Finalization check against discussion_summary.md: no unresolved contradictions w
 
 ## Next sections
 
-Confirm the final design destination. The proposed location is ./docs/designs/clinical-trial-criteria-explorer.md; no existing docs/designs directory was found. After confirmation, save the finalized design with working relative links and hand off to EGM's fresh-context review. No EGM Goldfish review has run, no implementation tests have run, and no code has been written.
+The author confirmed ./docs/designs/clinical-trial-criteria-explorer.md as the final design destination. The next step is EGM's fresh-context review of that finalized document. No EGM Goldfish review has run, no implementation tests have run, and no code has been written.
 
 *Drafted with EGM*

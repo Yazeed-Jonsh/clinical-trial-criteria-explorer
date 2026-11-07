@@ -9,7 +9,8 @@ The planned application searches trial records, explains inclusion and exclusion
 Day 1: product specification and project setup. The application, dataset, tests, and evaluation results have not been implemented yet.
 
 - [Discussion context](discussion_summary.md): decisions and constraints from the planning conversation.
-- [Design draft](design_draft.md): all sections approved and reconciled; final destination confirmation pending.
+- [Approved design](docs/designs/clinical-trial-criteria-explorer.md): finalized after author approval; fresh EGM review pending.
+- [Working draft](design_draft.md): retained as the drafting record.
 - [Tasks and learning record](TASKS.md): progress and completion evidence.
 - [Agent instructions](AGENTS.md): how coding sessions should work.
 
