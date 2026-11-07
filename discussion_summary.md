@@ -37,7 +37,7 @@ The author chose B over A with "B is better". A used local generation; B uses ho
 
 ## EGM handoff
 
-Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", chose Option B: "B is better", approved the completed Technical Plan: "yes I approve it", and approved Alternatives Considered. The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. Detailed Implementation review is next. No provider/model or spending cap is selected, and no fresh-context review has run.
+Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", chose Option B: "B is better", approved the completed Technical Plan: "yes I approve it", approved Alternatives Considered, and approved Detailed Implementation: "yes I approve the detailed implementation plan". The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. All sections are approved; destination confirmation is next. No provider/model or spending cap is selected, and no fresh-context review has run.
 
 ## Author's coding-session requirements
 

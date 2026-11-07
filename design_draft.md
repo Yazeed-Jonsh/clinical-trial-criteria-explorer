@@ -1,16 +1,16 @@
 # Clinical Trial Criteria Explorer
 
 - Author: Yazeed-Jonsh
-- Status: Draft; Overview and Goals, Technical Plan, and Alternatives approved; Detailed Implementation awaiting review
+- Status: Author-approved design content; final destination confirmation pending
 - Date: 2026-11-07
 - Predecessor: [discussion_summary.md](discussion_summary.md)
-- EGM stage: detailed implementation review
+- EGM stage: finalization; destination confirmation pending
 
 Author approved Overview and Goals in chat: "yes I approve them". This approval covers the reader, the approximately 50-study type 2 diabetes sample, and product boundaries.
 
 The author then selected Option B in chat: "B is better", and approved the completed Technical Plan: "yes I approve it". Local retrieval with hosted generation and the technical contracts below are approved. Live model requests still require a provider/model choice and an agreed spending cap.
 
-The author approved Alternatives Considered in chat: "I approve the approve Alternatives Considered". Detailed Implementation below is a new draft for review, not authorization to implement all features in one session.
+The author approved Alternatives Considered in chat: "I approve the approve Alternatives Considered", and Detailed Implementation: "yes I approve the detailed implementation plan". All design sections have author approval. This is not authorization to implement all features in one session.
 
 ## Overview
 
@@ -327,8 +327,10 @@ Do not impose a coverage percentage without evidence that it improves verificati
 
 This plan implements the approved local-storage, local-retrieval, hosted-generation architecture. It does not select a new external interface or model provider. The author must still choose an embedding model and hosted model at their respective milestones, with measured compatibility and costs. If evidence requires a contract or architecture change, return it for a design decision before implementation.
 
+Finalization check against discussion_summary.md: no unresolved contradictions were found. The approximately 50-study type 2 diabetes sample, public-data boundary, local retrieval and hosted generation, and incremental learning workflow remain aligned. The draft expands the predecessor with the technical contracts and file-level tasks the author separately approved, including offline CI and static checks. Model choice, pricing, and spending-cap prerequisites remain explicit; they have not been silently resolved. This check is by the drafting agent and is not a fresh-context Goldfish review.
+
 ## Next sections
 
-Review Detailed Implementation. After approval, reconcile the complete draft against its predecessor, finalize it at an author-approved destination, and hand off to EGM's fresh-context review. No EGM Goldfish review has run, no implementation tests have run, and no code has been written.
+Confirm the final design destination. The proposed location is ./docs/designs/clinical-trial-criteria-explorer.md; no existing docs/designs directory was found. After confirmation, save the finalized design with working relative links and hand off to EGM's fresh-context review. No EGM Goldfish review has run, no implementation tests have run, and no code has been written.
 
 *Drafted with EGM*
