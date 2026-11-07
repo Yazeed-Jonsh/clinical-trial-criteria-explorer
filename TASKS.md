@@ -18,21 +18,23 @@
 - [x] Confirm the final destination and save the finalized design through EGM's finalization gate.
 - [x] Finish Day 1 drafting with an approved scope and a committed documentation milestone.
 - [x] Run a fresh-context EGM review of docs/designs/clinical-trial-criteria-explorer.md: five stages, nine reviewers, report-only pass completed.
-- [ ] Resolve findings in consolidated_review_report.md through EGM Resolve, starting with first-feature contracts R01 and R02.
+- [x] Resolve all fourteen actions through EGM Resolve: author accepted the complete change set with "auto accept"; applied to design and recorded in goldfish_review_report.md.
+- [x] Preserve historical review/proposal artifacts and synchronize the current design and working draft.
+- [ ] Begin coding feature 1, normalize one record, only through the author's explanation/prediction/exercise workflow.
 
-## Planned sequence after Day 1
+## Approved coding sequence after design
 
-2. Fetch and normalize public trial records; bind example questions to source evidence.
-3. Establish keyword search and a measured baseline.
-4. Add embeddings and vector retrieval.
-5. Combine retrieval results and structured filters.
-6. Produce cited explanations with missing-information behavior.
-7. Introduce explicit tools and saved workflow state.
-8. Add a versioned API and structured logs.
-9. Run automated tests and evaluation, including fidelity failures.
-10. Fix observed failures and prepare reproducible GitHub documentation.
+1. Normalize one API-shaped record without I/O or model dependencies.
+2. Collect and freeze the bounded public study sample.
+3. Store studies and source-located passages transactionally.
+4. Measure keyword retrieval on labeled questions.
+5. Add local embeddings and combined retrieval.
+6. Produce cited hosted-model responses with uncertainty and budget controls.
+7. Add bounded tool calling and persisted workflow state.
+8. Expose the versioned local API and structured logs.
+9. Run final held-out evaluation and prepare reproducible portfolio documentation.
 
-This sequence is provisional until the technical design is reviewed. Reduce scope or record extra effort if the one-hour sessions prove insufficient.
+Each feature requires the author's approval before starting the next. The original ten one-hour sessions are an effort target; record additional time rather than compressing learning or claiming unfinished work.
 
 ## Learning note for Day 1
 
@@ -42,4 +44,4 @@ Author exercise: explain why an unstated criterion does not establish that a par
 
 ## Evidence
 
-All design sections approved; Option B selected. The author-confirmed design is saved at docs/designs/clinical-trial-criteria-explorer.md. Five-stage EGM review completed with nine fresh reviewer runs; all reports exist. Nineteen raw findings map to fourteen consolidated actions; no reviewer remains not-run. The review is not clean/converged. The approved design was not modified. No dataset collected, application implemented, automated tests executed, or evaluation scores measured yet. Resolve first-feature contracts before implementation.
+All design sections approved; Option B selected. Five-stage EGM review completed with nine fresh reviewer runs. Nineteen raw findings map to fourteen consolidated actions, all now corrected in the author-accepted design at docs/designs/clinical-trial-criteria-explorer.md. The unsupported maintainer-link subclaim was contested and skipped. The applied design hash and acceptance are recorded in goldfish_review_report.md. No post-resolution independent re-audit/convergence, dataset collection, implementation, automated application tests, or measured evaluation scores are claimed. First-feature contracts C01/C02 are defined for the next coding session.

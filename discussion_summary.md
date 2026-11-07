@@ -2,6 +2,7 @@
 
 - Author: Yazeed-Jonsh
 - Date: 2026-11-07
+- Last updated: 2026-11-08
 - Source: the author's project planning conversation.
 - Review state: conversation notes, not a completed EGM Goldfish review.
 
@@ -33,11 +34,11 @@ Fine-tuning is outside the agreed first-project scope. The author selected Optio
 
 ## Alternatives
 
-The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. The documented trade-offs include local hardware requirements versus network dependency, credentials, and usage costs. The author did not give a separate rejection rationale; do not invent one. The author approved Alternatives Considered. It also preserves the existing ClinicalTrials.gov interface as a product baseline rather than claiming that it is inadequate.
+The author chose B over A with "B is better". A used local generation; B uses hosted generation and local retrieval. No separate historical reason was supplied. In the later EGM resolution the author accepted a current engineering rationale: focus the first project on retrieval/evaluation without making local generation setup/performance a prerequisite, while controlling hosted credentials/network/cost obligations. This does not establish that local inference failed or invent the original motive. The existing ClinicalTrials.gov interface remains the product baseline.
 
 ## EGM handoff
 
-Use this document as the predecessor for egm-draft. The author approved Overview and Goals in chat: "yes I approve them", chose Option B: "B is better", approved the completed Technical Plan: "yes I approve it", approved Alternatives Considered, and approved Detailed Implementation: "yes I approve the detailed implementation plan". The student/researcher reader, approximately 50 type 2 diabetes studies, and product boundaries are accepted. All sections and the final destination are approved. The finalized design is docs/designs/clinical-trial-criteria-explorer.md. No provider/model or spending cap is selected, and no fresh-context review has run.
+This document was the predecessor for EGM drafting. The author approved Overview and Goals, selected Option B, approved Technical Plan, Alternatives, Detailed Implementation, and the final destination. A five-stage fresh-context review subsequently produced fourteen consolidated actions. The author accepted the complete EGM Resolve corrections with "auto accept" on 2026-11-08. Those corrections are applied to docs/designs/clinical-trial-criteria-explorer.md and synchronized to the working draft. See goldfish_review_report.md for traceability and the applied hash. No provider/model or spending cap is selected, and no independent post-resolution re-audit is claimed.
 
 ## Author's coding-session requirements
 

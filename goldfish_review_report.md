@@ -1,14 +1,16 @@
 # Goldfish Annotated Review Report
 
+Status: resolved
+
 **Target:** [approved design](docs/designs/clinical-trial-criteria-explorer.md), full file, original lines1–336.
 
-**Resolution state:** complete proposed change set; application approval pending. **Date:** 2026-11-08.
+**Resolution state:** fourteen proposed corrections accepted and applied; one contested subclaim skipped; no remaining unaddressed consolidated actions. **Date:** 2026-11-08.
 
 **Original SHA256:** 846EFBC44BE29497D0FE97031BF2685FBBD50F2EDA67417D5BC360645F49F7F5.
 
 The author requested EGM Resolve for all findings. This report addresses all fourteen consolidated actions and traces all nineteen raw findings. It proposes fourteen fixes and contests only the unsupported maintainer-link interpretation within R12. No item is declined or escalated. Proposed routine choices are concrete so the author can approve one complete batch. Actual embedding/model/provider selection, resource budgets, and paid spending remain the previously agreed future gates; no such amount or model is invented here.
 
-The complete resulting document is the [proposed design](docs/designs/clinical-trial-criteria-explorer.proposed.md). Its C01–C10 sections contain the exact types, formulas, state transitions and examples; the same contracts are available separately in [proposed implementation contracts](resolution_contracts.proposed.md). The proposed design contains twenty replacements in the existing text plus those detailed contracts. Those artifacts are reviewable candidates, not edits already applied to the approved target.
+The complete resulting document is the [proposed design](docs/designs/clinical-trial-criteria-explorer.proposed.md). Its C01–C10 sections contain the exact types, formulas, state transitions and examples; the same contracts are available separately in [proposed implementation contracts](resolution_contracts.proposed.md). The proposed design contains twenty replacements in the existing text plus those detailed contracts. The author accepted that exact candidate with "auto accept". Its corrections are now applied to the approved target; candidate files retain their original proposal wording as historical records.
 
 ## Prioritized Findings and AI Suggestions
 
@@ -142,10 +144,14 @@ All nineteen raw finding IDs are mapped above: Z5-1; D7-1,D7-2,S7-1,T7-1; Z8-1,Z
 
 Three research agents supplied read-only source/schema, retrieval/evaluation and service-boundary proposals. The primary EGM resolver selected and integrated the proposed defaults. A second consistency check corrected canonical hashing, search-text ownership, SQL nullability/version0 handling, per-study response statuses, deadline/recovery state, idempotent accounting and keyword-before-vector operation. This is proposal verification, not an isolated EGM re-audit or proof of implementation correctness.
 
-The approved design remains at its recorded hash. No resolution is marked applied/resolved yet, no paid call or model download occurred, and no implementation feature or test was started. Proposal references are in the candidate's final References section; app defaults are labeled separately from verified library/API facts.
+The pre-resolution design hash is retained above; the post-resolution hash is recorded below. All fourteen proposed corrections are now applied after the author's batch acceptance. No paid call or model download occurred, and no implementation feature or test was started. Proposal references are in the candidate's final References section; app defaults are labeled separately from verified library/API facts.
 
-## EGM application decision
+## EGM application decision and exit record
 
-Review the complete proposed design or comment on this report. Reply "auto accept" to apply all fourteen proposed corrections as one batch, skipping only the contested public-link demand. Reply "interactive breakdown" to discuss them one at a time, or "continue"/"no changes" to retain the existing design. Targeted comments can accept, reject or revise individual items.
+The author replied "auto accept" on 2026-11-08. All fourteen PROPOSE FIX actions were applied in one batch. The contested maintainer/public-link subclaim in R12 was skipped; its rationale correction was accepted. Accepted fixes: 14. Contested subclaims: 1. Escalated: 0. Declined: 0. Remaining unaddressed consolidated actions: 0.
 
-After application, synchronize the finalized design, retained working draft, task record and project links; record the exact applied revision and any unaddressed items. Re-audit is a separate action, not an automatic claim that the old review passed. Starting the first coding feature still follows the author's explanation/prediction/exercise/approval workflow.
+The finalized design and retained working draft were synchronized. Historical reviewer reports, the complete proposed design, and its separate contract artifact are preserved as review inputs/history. The recorded original line ranges identify the earlier reviewed revision; they are not current line references.
+
+This is document-resolution completion, not an independent post-resolution audit, convergence, measured implementation correctness, or authorization to implement every feature. Model/provider choices and paid caps remain their explicit future prerequisites. The author's incremental learning gates remain in force.
+
+**Applied design SHA256:** D461EE9936B50F908F6414AD83EC88E06ADCD31AB9B9026C7D49C97FAED081D5

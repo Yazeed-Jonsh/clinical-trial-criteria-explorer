@@ -5,7 +5,7 @@ These instructions apply throughout this repository.
 EGM artifact directory: .
 
 - Read README.md, discussion_summary.md, docs/designs/clinical-trial-criteria-explorer.md, and TASKS.md at session start. design_draft.md is the retained drafting record.
-- EGM drafting is complete and the design has author approval. The five-stage consolidated EGM review is complete with open findings in consolidated_review_report.md. Read that report when resolving findings. Record author decisions before revising approved contracts; review completion is not a clean or converged verdict.
+- EGM drafting and five-stage review are complete. The author accepted all fourteen resolution corrections with "auto accept"; read goldfish_review_report.md for the applied decisions and canonical design hash. consolidated_review_report.md is historical. No independent post-resolution re-audit or convergence is claimed. Record author decisions before revising approved contracts.
 - Use the installed EGM skill instructions and actual fresh-context reviewers when its review stage is authorized. Never label a parent-session self-review as a Goldfish review.
 - Teach one small increment at a time. Explain its purpose and one failure case; give the author a short exercise.
 - Implement only tasks supported by the agreed design after leaving the design workflow for implementation.
@@ -20,7 +20,7 @@ EGM artifact directory: .
 
 ## Learning workflow when implementation begins
 
-The author's goal is a strong AI Engineer portfolio with real engineering skills. Prioritize understanding, maintainable code, and measurable progress. These instructions govern coding sessions after the design workflow; saving them does not authorize starting implementation or advancing to another feature.
+The author's goal is a strong AI Engineer portfolio with real engineering skills. Prioritize understanding, maintainable code, and measurable progress. These instructions govern coding sessions after the design workflow. The EGM resolution is applied; batch acceptance of documentation does not authorize implementing all features. The next feature is the pure normalization transformation described by C01/C02 in the approved design.
 
 1. Before implementing a feature, explain its purpose, architecture, and prerequisite concepts, using concrete examples for unfamiliar Python, ML, and engineering ideas.
 2. Implement one small, testable feature at a time. Avoid unrelated edits and unnecessary large changes.

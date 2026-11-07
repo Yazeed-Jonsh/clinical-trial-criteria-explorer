@@ -6,18 +6,19 @@ The planned application searches trial records, explains inclusion and exclusion
 
 ## Current work
 
-Day 1: product specification and project setup. The application, dataset, tests, and evaluation results have not been implemented yet.
+Day 1 design work and EGM resolution are complete. The next coding feature is normalization of one trial-shaped record. The application, dataset, tests, and evaluation results have not been implemented yet.
 
 - [Discussion context](discussion_summary.md): decisions and constraints from the planning conversation.
-- [Approved design](docs/designs/clinical-trial-criteria-explorer.md): finalized after author approval; unchanged by the review.
-- [Consolidated EGM review](consolidated_review_report.md): all five stages completed; findings require resolution before implementation readiness is established.
-- [Working draft](design_draft.md): retained as the drafting record.
+- [Approved design](docs/designs/clinical-trial-criteria-explorer.md): includes all fourteen accepted EGM corrections and exact implementation contracts.
+- [EGM resolution](goldfish_review_report.md): accepted actions, contested subclaim, and applied design hash.
+- [Consolidated EGM review](consolidated_review_report.md): historical findings against the earlier design revision; resolved in the linked resolution record.
+- [Working draft](design_draft.md): synchronized copy with links adjusted for the project root.
 - [Tasks and learning record](TASKS.md): progress and completion evidence.
 - [Agent instructions](AGENTS.md): how coding sessions should work.
 
 ## Planned data
 
-ClinicalTrials.gov public study records. The initial proposal is about 50 type 2 diabetes studies. Day 2 will verify the API, select records, and save a reproducible snapshot with identifiers and retrieval dates.
+ClinicalTrials.gov public study records. The approved scope is about 50 type 2 diabetes studies selected from a saved bounded candidate window. The API source paths and supported query have been checked for the design; live collection and data-quality measurements follow normalization as a separately approved feature. Saved records retain identifiers and retrieval dates.
 
 References:
 
