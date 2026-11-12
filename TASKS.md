@@ -24,7 +24,7 @@
 - [x] Inventory existing dependencies before downloads; reuse local build tools/packaging and install only missing test dependencies with author permission.
 - [x] Install the package editable and run normalization tests: 39 passed in0.57s on Python3.12.7; author prediction confirmed.
 - [x] Record data flow, environment/package versions, actual results and limitations.
-- [ ] Author attempts the empty-title test exercise; provide hints before a solution.
+- [x] Complete the guided empty-title exercise: author added the explained test; 40 cases passed in0.54s.
 - [ ] Obtain explicit author approval before feature 2.
 
 ## Approved coding sequence after design
@@ -50,3 +50,7 @@ Author exercise: explain why an unstated criterion does not establish that a par
 ## Evidence
 
 All design sections approved; Option B selected; all fourteen EGM corrections applied. The pure normalization feature implementing C01/C02 is now verified with 39 passing synthetic cases; the author's missing-title versus missing-ID prediction matched actual behavior. Environment details are in docs/learning_log.md. No live dataset, retrieval/model evaluation, or later feature is implemented. Exercise and next-feature approval are pending. No independent post-resolution EGM re-audit/convergence is claimed.
+
+## Day 3 evidence
+
+The reusable fetch command produced a complete live snapshot at the four-page cap. It fetched 200 candidates and selected 50. The 86 passing offline tests include complete and partial collection, byte preservation, and snapshot ID collision checks. Snapshot ingestion into SQLite remains a separate milestone.

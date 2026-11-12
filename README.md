@@ -6,7 +6,7 @@ The planned application searches trial records, explains inclusion and exclusion
 
 ## Current work
 
-Day 1 design work and EGM resolution are complete. The first normalization feature is implemented and verified: **39 synthetic test cases passed** on Python3.12.7. See [Day 2 learning log](docs/learning_log.md). Live data collection and later application features have not started. The author's exercise and approval for the next feature remain pending.
+Day 3 snapshot collection is implemented and verified. The live command collected four pages and selected 50 usable studies. See the [learning log](docs/learning_log.md) for verification details.
 
 - [Discussion context](discussion_summary.md): decisions and constraints from the planning conversation.
 - [Approved design](docs/designs/clinical-trial-criteria-explorer.md): includes all fourteen accepted EGM corrections and exact implementation contracts.
@@ -52,4 +52,16 @@ $env:PYTHONDONTWRITEBYTECODE = '1'
 
 That local tooling path is an environment optimization, not an application dependency. If it moves, inventory compatible local packages again or use the standalone installation above. Tests do not modify sys.path or depend on a machine-specific path in source code.
 
-Verified result: `39 passed in 0.57s`. Dependencies were installed with caching disabled and temporary files directed to `.venv/tmp` on D: because C: was short of space. Existing setuptools/wheel/packaging were reused; the project was installed editable with `--no-index --no-deps --no-build-isolation`. No global/tool-managed packages were altered. Exact versions and the earlier installation failures are recorded in the learning log.
+Verified result: `40 passed in 0.54s`. Dependencies were installed with caching disabled and temporary files directed to `.venv/tmp` on D: because C: was short of space. Existing setuptools/wheel/packaging were reused; the project was installed editable with `--no-index --no-deps --no-build-isolation`. No global/tool-managed packages were altered. Exact versions and the earlier installation failures are recorded in the learning log.
+
+## Collect a fresh snapshot
+
+Run this from the project root with a Python 3.12 environment that trusts the site's TLS certificate chain:
+
+```powershell
+python -m trial_explorer.cli fetch --output-root data/raw
+```
+
+An installed package also provides the equivalent `trial-explorer fetch --output-root data/raw` command. Each invocation creates a new snapshot directory containing the original page bytes and a final `manifest.json`. The manifest records the query, page hashes, UTC timestamps, and selected NCT IDs with one-based raw page and row locations. The selection comes from at most four pages. The generated data is ignored by Git.
+
+A completed fetch exits 0, including when fewer than 50 usable records are available. An HTTP, transport, or response error produces a partial manifest and exits 3. If writing fails before the final manifest is published, the directory is unfinished. On this machine the live run used Windows CPython with the Windows certificate store, after the MSYS2 environment rejected the TLS chain.

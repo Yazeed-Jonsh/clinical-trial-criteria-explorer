@@ -156,3 +156,13 @@ def test_record_fields_cannot_be_reassigned(record):
     study = normalize_study(record, NOW, SNAPSHOT)
     with pytest.raises(FrozenInstanceError):
         study.nct_id = "NCT00000002"
+
+def test_supplied_empty_title(record):
+    # Arrange
+    record["protocolSection"]["identificationModule"]["briefTitle"] = ""
+
+    # Act
+    study = normalize_study(record, NOW, SNAPSHOT)
+
+    # Assert
+    assert study.title == ""
