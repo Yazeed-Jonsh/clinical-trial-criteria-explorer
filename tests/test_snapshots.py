@@ -88,3 +88,127 @@ def test_snapshot_refuses_existing_id(tmp_path, monkeypatch):
     with pytest.raises(FileExistsError):
         snapshots.collect_snapshot(tmp_path)
     assert manifest.read_bytes() == b"original"
+
+
+@pytest.mark.parametrize("case", ["valid", "edited", "partial"])
+def test_load_snapshot_manifest_validates_saved_run(tmp_path, monkeypatch, case):
+    def fake_fetch(token):
+        if case == "partial":
+            raise URLError(TimeoutError("simulated timeout"))
+        return b'{"studies": []}'
+
+    monkeypatch.setattr(ingest, "fetch_studies_page", fake_fetch)
+    path, manifest = snapshots.collect_snapshot(tmp_path)
+    original_bytes = path.read_bytes()
+
+    if case == "valid":
+        assert snapshots.load_snapshot_manifest(path.parent) == manifest
+        assert path.read_bytes() == original_bytes
+        assert manifest["selected_count"] == 0
+        assert manifest["target_met"] is False
+    elif case == "edited":
+        manifest["selected_count"] = 1
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        with pytest.raises(ValueError, match="Manifest hash mismatch"):
+            snapshots.load_snapshot_manifest(path.parent)
+    else:
+        with pytest.raises(ValueError, match="Only complete snapshots"):
+            snapshots.load_snapshot_manifest(path.parent)
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ([], "Expected a manifest object"),
+        ({"schema_version": True}, "Invalid manifest schema version"),
+        ({"schema_version": 2}, "Unsupported manifest schema version"),
+    ],
+)
+def test_load_snapshot_manifest_rejects_unsupported_format(tmp_path, body, message):
+    (tmp_path / "manifest.json").write_text(json.dumps(body), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        snapshots.load_snapshot_manifest(tmp_path)
+
+
+@pytest.mark.parametrize("case", ["valid", "altered", "unexpected_filename"])
+def test_load_verified_pages_checks_saved_bytes(tmp_path, monkeypatch, case):
+    body = b'{ "studies": [] }\n'
+    monkeypatch.setattr(ingest, "fetch_studies_page", lambda token: body)
+    path, _ = snapshots.collect_snapshot(tmp_path)
+    manifest = snapshots.load_snapshot_manifest(path.parent)
+
+    if case == "valid":
+        assert snapshots.load_verified_pages(path.parent, manifest) == [{"studies": []}]
+        assert (path.parent / "page-01.json").read_bytes() == body
+    elif case == "altered":
+        (path.parent / "page-01.json").write_bytes(b'{"studies": []}')
+        with pytest.raises(ValueError, match="Raw page hash mismatch"):
+            snapshots.load_verified_pages(path.parent, manifest)
+    else:
+        manifest["pages"][0]["filename"] = "../another-file.json"
+        with pytest.raises(ValueError, match="Unexpected raw page filename"):
+            snapshots.load_verified_pages(path.parent, manifest)
+
+
+@pytest.fixture
+def saved_selection(tmp_path, monkeypatch):
+    criteria = "Inclusion Criteria:\n- Age \u2265 18.\n"
+    body = json.dumps({"studies": [study("NCT00000001", criteria=criteria)]}).encode()
+    monkeypatch.setattr(ingest, "fetch_studies_page", lambda token: body)
+    path, manifest = snapshots.collect_snapshot(tmp_path)
+    return path, manifest, criteria
+
+
+def test_load_selected_studies_preserves_source_and_provenance(saved_selection):
+    path, manifest, criteria = saved_selection
+
+    loaded = snapshots.load_selected_studies(path.parent)
+
+    assert len(loaded) == 1
+    assert loaded[0].nct_id == "NCT00000001"
+    assert loaded[0].criteria_text == criteria
+    assert loaded[0].snapshot_id == manifest["snapshot_id"]
+    assert loaded[0].retrieved_at == datetime.fromisoformat(manifest["pages"][0]["retrieved_at"])
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("nct_id", "NCT00000002", "Selected study ID"),
+        ("page", 0, "Selected page"),
+        ("page", 2, "Selected page"),
+        ("page", True, "Selected page"),
+        ("row", 0, "Selected row"),
+        ("row", 2, "Selected row"),
+        ("row", True, "Selected row"),
+    ],
+)
+def test_load_selected_studies_rejects_bad_locator(saved_selection, field, value, message):
+    path, manifest, _ = saved_selection
+    manifest["selected_records"][0][field] = value
+    manifest.pop("manifest_sha256")
+    manifest["manifest_sha256"] = sha256(snapshots.canonical_json(manifest)).hexdigest()
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        snapshots.load_selected_studies(path.parent)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("selected_ids", [], "Selected IDs"),
+        ("selected_count", 2, "Selected count"),
+        ("target_met", True, "Target flag"),
+    ],
+)
+def test_selection_metadata_must_match_loaded_records(saved_selection, field, value, message):
+    path, manifest, _ = saved_selection
+    manifest[field] = value
+    manifest.pop("manifest_sha256")
+    manifest["manifest_sha256"] = sha256(snapshots.canonical_json(manifest)).hexdigest()
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        snapshots.load_selected_studies(path.parent)

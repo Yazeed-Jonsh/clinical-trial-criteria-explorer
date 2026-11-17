@@ -25,3 +25,22 @@ logs/
 .vscode/
 Thumbs.db
 .DS_Store
+
+# Local planning, agent instructions, learning notes, and review reports
+/AGENTS.md
+/TASKS.md
+/comprehension_report.md
+/consolidated_review_report.md
+/critic_report.md
+/design_draft.md
+/discussion_summary.md
+/docs/designs/SITEMAP.md
+/docs/designs/clinical-trial-criteria-explorer.md
+/docs/designs/clinical-trial-criteria-explorer.proposed.md
+/docs/learning_log.md
+/goldfish_review_report.md
+/implementation_readiness_report.md
+/intermediate_zoom_out_report.md
+/resolution_contracts.proposed.md
+/zoom_out_report.md
+/*_report.md

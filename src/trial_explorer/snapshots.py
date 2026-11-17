@@ -159,3 +159,97 @@ def collect_snapshot(output_root: Path) -> tuple[Path, dict]:
     path = directory / "manifest.json"
     _write_atomic(path, (json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode())
     return path, manifest
+
+def load_snapshot_manifest(directory: Path) -> dict:
+    """Read a complete snapshot manifest and verify its hash."""
+    manifest = json.loads((directory / "manifest.json").read_bytes())
+
+    if not isinstance(manifest, dict):
+        raise ValueError("Expected a manifest object")
+    if type(manifest.get("schema_version")) is not int:
+        raise ValueError("Invalid manifest schema version")
+    if manifest["schema_version"] != 1:
+        raise ValueError("Unsupported manifest schema version")
+    if manifest.get("fetch_status") != "complete":
+        raise ValueError("Only complete snapshots can be imported")
+
+    stored_hash = manifest.get("manifest_sha256")
+    content = {
+        key: value
+        for key, value in manifest.items()
+        if key != "manifest_sha256"
+    }
+    actual_hash = _hash(canonical_json(content))
+
+    if stored_hash != actual_hash:
+        raise ValueError("Manifest hash mismatch")
+
+    return manifest
+
+def load_verified_pages(directory: Path, manifest: dict) -> list[dict]:
+    """Read saved pages after checking their filenames and byte hashes."""
+    verified_pages = []
+
+    for number, page_info in enumerate(manifest["pages"], start=1):
+        expected_filename = f"page-{number:02d}.json"
+
+        if page_info.get("filename") != expected_filename:
+            raise ValueError("Unexpected raw page filename")
+
+        body = (directory / expected_filename).read_bytes()
+        if _hash(body) != page_info.get("sha256"):
+            raise ValueError(f"Raw page hash mismatch: {expected_filename}")
+
+        page = ingest.parse_studies_page(body)
+        verified_pages.append(page)
+
+    return verified_pages
+
+def load_selected_studies(directory: Path, *, manifest: dict | None = None) -> list[Study]:
+    """Load selected studies from verified snapshot files."""
+    if manifest is None:
+        manifest = load_snapshot_manifest(directory)
+    pages = load_verified_pages(directory, manifest)
+    studies: list[Study] = []
+
+    for selected in manifest["selected_records"]:
+        page_number = selected["page"]
+        row_number = selected["row"]
+
+        if type(page_number) is not int or not 1 <= page_number <= len(pages):
+            raise ValueError("Selected page is out of range")
+
+        records = pages[page_number - 1]["studies"]
+        if type(row_number) is not int or not 1 <= row_number <= len(records):
+            raise ValueError("Selected row is out of range")
+
+        raw_record = records[row_number - 1]
+
+        page_info = manifest["pages"][page_number - 1]
+        retrieved_at = datetime.fromisoformat(page_info["retrieved_at"])
+
+        study = normalize_study(
+            raw_record,
+            retrieved_at=retrieved_at,
+            snapshot_id=manifest["snapshot_id"],
+        )
+
+        if study.nct_id != selected["nct_id"]:
+            raise ValueError("Selected study ID does not match its source record")
+
+        if not (study.criteria_text or "").strip():
+            raise ValueError("Selected study has no usable criteria")
+
+        studies.append(study)
+    selected_ids = [study.nct_id for study in studies]
+    if selected_ids != sorted(set(selected_ids)):
+        raise ValueError("Selected study IDs must be unique and sorted")
+    if selected_ids != manifest.get("selected_ids"):
+        raise ValueError("Selected IDs do not match the manifest")
+    if type(manifest.get("selected_count")) is not int or manifest["selected_count"] != len(studies):
+        raise ValueError("Selected count does not match loaded studies")
+    if len(studies) > TARGET_COUNT:
+        raise ValueError("Selection exceeds the target count")
+    if type(manifest.get("target_met")) is not bool or manifest["target_met"] != (len(studies) == TARGET_COUNT):
+        raise ValueError("Target flag does not match selected count")
+    return studies

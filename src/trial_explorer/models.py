@@ -25,3 +25,21 @@ class Study:
     retrieved_at: datetime
     snapshot_id: str
     recruitment_status: str | None
+
+@dataclass(frozen=True)
+class Passage:
+    """An exact span of eligibility text and its enclosing section."""
+
+    snapshot_id: str
+    nct_id: str
+    passage_id: str
+    segmentation_version: str
+
+    source_start: int
+    source_end: int
+    text: str
+    heading: str | None
+    parent_source_start: int
+    parent_source_end: int
+    parent_text: str
+    search_text: str

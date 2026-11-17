@@ -1,67 +1,110 @@
 # Clinical Trial Criteria Explorer
 
-A learning project by Yazeed-Jonsh for exploring public clinical trial eligibility criteria with traceable evidence.
+Explore public clinical trial eligibility criteria with traceable source evidence.
 
-The planned application searches trial records, explains inclusion and exclusion criteria, and compares two studies. Each explanation points back to its supporting source text. Study teams determine participation eligibility.
+The project currently collects ClinicalTrials.gov records, preserves raw responses, extracts exact-text passages, and stores verified snapshots in SQLite. Retrieval and generated explanations are planned next. Study teams determine participation eligibility.
 
-## Current work
+## Current capabilities
 
-Day 3 snapshot collection is implemented and verified. The live command collected four pages and selected 50 usable studies. See the [learning log](docs/learning_log.md) for verification details.
+- Fetch up to four pages of type 2 diabetes studies, with timeouts and bounded retries.
+- Normalize records, deduplicate by NCT ID, and select up to 50 usable studies.
+- Preserve raw responses and a manifest with query parameters, timestamps, file hashes, and selected source locations.
+- Split criteria into paragraphs while retaining full parent sections, original character offsets, and stable passage IDs.
+- Import complete snapshots into SQLite in one transaction. Repeated imports verify stored values before succeeding without duplicate writes.
+- Read a study and its ordered passages within an explicit snapshot.
 
-- [Discussion context](discussion_summary.md): decisions and constraints from the planning conversation.
-- [Approved design](docs/designs/clinical-trial-criteria-explorer.md): includes all fourteen accepted EGM corrections and exact implementation contracts.
-- [EGM resolution](goldfish_review_report.md): accepted actions, contested subclaim, and applied design hash.
-- [Consolidated EGM review](consolidated_review_report.md): historical findings against the earlier design revision; resolved in the linked resolution record.
-- [Working draft](design_draft.md): synchronized copy with links adjusted for the project root.
-- [Tasks and learning record](TASKS.md): progress and completion evidence.
-- [Agent instructions](AGENTS.md): how coding sessions should work.
+Selection is deterministic within the saved candidate window. This bounded sample is not an exhaustive registry search.
 
-## Planned data
+## Setup
 
-ClinicalTrials.gov public study records. The approved scope is about 50 type 2 diabetes studies selected from a saved bounded candidate window. The API source paths and supported query have been checked for the design; live collection and data-quality measurements follow normalization as a separately approved feature. Saved records retain identifiers and retrieval dates.
+Use Python 3.12. Create a virtual environment, activate it, and install the project with test dependencies:
 
-References:
-
-- [API documentation](https://clinicaltrials.gov/data-api/api)
-- [Study data structure](https://clinicaltrials.gov/data-api/about-api/study-data-structure)
-- [Participation and eligibility questions](https://clinicaltrials.gov/find-studies/for-patients/common-questions)
-
-## Development approach
-
-Use EGM to develop and review the design. Implement one small task at a time, verify observable behavior, review the change, and record evidence before committing a milestone. Budget: ten sessions of about one hour; actual effort will be recorded.
-
-## Normalization data flow
-
-`nested source dictionary -> normalize_study -> explicit field validation -> frozen Study`
-
-[models.py](src/trial_explorer/models.py) defines the internal record. [normalize.py](src/trial_explorer/normalize.py) checks required IDs, optional text, source dates/statuses, snapshot IDs and timezone-aware retrieval timestamps. It preserves criteria text exactly and raises a typed error rather than returning a partial record. Dataclass annotations do not validate inputs on their own; untrusted data enters through the normalizer.
-
-All [normalization tests](tests/test_normalize.py) use synthetic inputs. They verify boundary behavior and text preservation, not clinical validity or live-registry integration.
-
-## Setup and tests
-
-The project requires Python3.12. For a standalone environment, create a virtual environment and install the editable package with its development dependencies using that environment's interpreter: `python -m pip install -e ".[dev]"`. Then run `python -m pytest tests/test_normalize.py -q`. Standard Windows Python uses `.venv/Scripts/python.exe`; this computer's MSYS2 Python uses `.venv/bin/python.exe`.
-
-This device reuses already-installed compatible build tools and `packaging` from Codex's bundled Python to avoid downloading copies. From PowerShell in the project directory, reproduce the verified test invocation with:
-
-```powershell
-$env:PYTHONPATH = 'C:\Users\hp\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\site-packages'
-$env:PYTHONDONTWRITEBYTECODE = '1'
-.\.venv\bin\python.exe -m pytest tests/test_normalize.py -q
+```bash
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install -e ".[dev]"
 ```
 
-That local tooling path is an environment optimization, not an application dependency. If it moves, inventory compatible local packages again or use the standalone installation above. Tests do not modify sys.path or depend on a machine-specific path in source code.
+The activation path above is for Git Bash with standard Windows Python. Linux, macOS, and MSYS2 environments use `source .venv/bin/activate`.
 
-Verified result: `40 passed in 0.54s`. Dependencies were installed with caching disabled and temporary files directed to `.venv/tmp` on D: because C: was short of space. Existing setuptools/wheel/packaging were reused; the project was installed editable with `--no-index --no-deps --no-build-isolation`. No global/tool-managed packages were altered. Exact versions and the earlier installation failures are recorded in the learning log.
+The application currently uses Python's standard library, including SQLite. Pytest supplies the automated tests.
 
-## Collect a fresh snapshot
+## Collect a snapshot
 
-Run this from the project root with a Python 3.12 environment that trusts the site's TLS certificate chain:
-
-```powershell
+```bash
 python -m trial_explorer.cli fetch --output-root data/raw
 ```
 
-An installed package also provides the equivalent `trial-explorer fetch --output-root data/raw` command. Each invocation creates a new snapshot directory containing the original page bytes and a final `manifest.json`. The manifest records the query, page hashes, UTC timestamps, and selected NCT IDs with one-based raw page and row locations. The selection comes from at most four pages. The generated data is ignored by Git.
+The command reports a new snapshot ID and manifest path. Each snapshot contains the original response bytes and a final `manifest.json`. The manifest links selected NCT IDs to one-based raw page and row locations.
 
-A completed fetch exits 0, including when fewer than 50 usable records are available. An HTTP, transport, or response error produces a partial manifest and exits 3. If writing fails before the final manifest is published, the directory is unfinished. On this machine the live run used Windows CPython with the Windows certificate store, after the MSYS2 environment rejected the TLS chain.
+A successful bounded run has `fetch_status="complete"`, with stop reason `api_end` or `page_cap`. `target_met` separately indicates whether 50 usable studies were found. A request or response failure preserves a partial snapshot and exits with code 3. A directory without a final manifest is unfinished.
+
+Live collection requires internet access and a Python environment with a valid TLS trust store.
+
+## Import into SQLite
+
+Create the output directory, then replace `SNAPSHOT_ID` with the ID returned by the fetch command:
+
+```bash
+mkdir -p data/processed
+python -m trial_explorer.cli import-snapshot \
+  --snapshot data/raw/SNAPSHOT_ID \
+  --db data/processed/trials.sqlite
+```
+
+The importer verifies the manifest hash, raw page hashes, selected study locations, and normalization rules. It then stores snapshot provenance, studies, and passages together. Passage and parent text must match exact source slices. A failed insertion rolls back the complete import. Reimporting requires matching snapshot metadata and all stored study and passage values.
+
+Exit codes are 0 for success, 2 for invalid snapshot data, and 3 for file or database failures. Downloaded records and local SQLite databases are ignored by Git.
+
+## Read stored evidence
+
+Read one study from Git Bash:
+
+```bash
+python -m trial_explorer.cli read-study \
+  --db data/processed/trials.sqlite \
+  --snapshot-id SNAPSHOT_ID --nct-id NCT00000001
+```
+
+Read its first passage, including parent context and original-text offsets:
+
+```bash
+python -m trial_explorer.cli read-passages \
+  --db data/processed/trials.sqlite \
+  --snapshot-id SNAPSHOT_ID --nct-id NCT00000001 --limit 1
+```
+
+Use IDs present in your imported snapshot. Omit `--limit` to read all its passages in source order. Both commands open SQLite read-only and print formatted JSON. Missing studies exit 2 with `study_not_found`. Database failures exit 3.
+
+Each passage retains its full enclosing section so exceptions can remain available during later context assembly.
+
+## Data flow
+
+`ClinicalTrials.gov → raw pages and manifest → normalized studies → exact-text passages → SQLite → CLI reads`
+
+- `ingest.py` builds requests, handles retries, and follows continuation tokens.
+- `normalize.py` validates source records and preserves their criteria text.
+- `snapshots.py` collects snapshots, records selection provenance, and verifies saved inputs.
+- `passages.py` extracts paragraphs with original-text offsets and parent context.
+- `store.py` manages versioned SQLite tables, transactional imports, and snapshot-scoped reads.
+- `cli.py` exposes the fetch, import, and read commands.
+
+## Planned work
+
+Keyword retrieval, embeddings and hybrid search, cited RAG responses, evaluation, and an API service.
+
+## Verification
+
+```bash
+python -m pytest -q
+```
+
+Verified result: **158 tests passed**. Synthetic tests cover normalization, request and retry behavior, snapshot integrity, passage boundaries and IDs, transactional rollback, duplicate handling, CLI import, and isolation between snapshots.
+
+A separate live collection retrieved 200 records from four pages and selected 50 studies. Import produced 190 passages. File and manifest hashes, database integrity, foreign keys, and every passage's exact source slices were verified. Live collection counts can change as the registry updates.
+
+## Source
+
+- [ClinicalTrials.gov API documentation](https://clinicaltrials.gov/data-api/api)
+- [Study data structure](https://clinicaltrials.gov/data-api/about-api/study-data-structure)
+- [Participation and eligibility questions](https://clinicaltrials.gov/find-studies/for-patients/common-questions)
