@@ -349,3 +349,31 @@ def get_passages(
         (snapshot_id, nct_id),
     ).fetchall()
     return [Passage(**dict(row)) for row in rows]
+
+def get_snapshot_passages(
+    connection: sqlite3.Connection, snapshot_id: str
+) -> list[Passage]:
+    """Load all passages belonging to one existing snapshot."""
+    exists = connection.execute(
+        "SELECT 1 FROM snapshots WHERE snapshot_id = ?",
+        (snapshot_id,),
+    ).fetchone()
+    if exists is None:
+        raise ValueError("Unknown snapshot")
+
+    cursor = connection.cursor()
+    cursor.row_factory = sqlite3.Row
+    rows = cursor.execute(
+        """
+        SELECT passage_id, snapshot_id, nct_id, segmentation_version,
+               source_start, source_end, text, heading,
+               parent_source_start, parent_source_end,
+               parent_text, search_text
+        FROM passages
+        WHERE snapshot_id = ?
+        ORDER BY nct_id, source_start, passage_id
+        """,
+        (snapshot_id,),
+    ).fetchall()
+
+    return [Passage(**dict(row)) for row in rows]

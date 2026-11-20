@@ -78,6 +78,42 @@ Use IDs present in your imported snapshot. Omit `--limit` to read all its passag
 
 Each passage retains its full enclosing section so exceptions can remain available during later context assembly.
 
+## Keyword search
+
+```bash
+python -m trial_explorer.cli search \
+  --db data/processed/trials.sqlite \
+  --snapshot-id SNAPSHOT_ID --query "minimum age" --mode keyword
+```
+
+Add `--nct-id NCT_ID` or `--recruitment-status RECRUITING` to narrow the search. Repeat either flag for multiple values. Values within each filter use OR; the two filters combine with AND. IDs must exist in the requested snapshot. Duplicate, unknown, or excessive filter values fail validation. A valid combination matching zero studies returns an empty result.
+
+BM25 uses lexical-v1 Unicode normalization, preserves numeric comparisons and decimals, and uses k1=1.2 and b=0.75. For each distinct query term, its contribution is `IDF * tf * (k1 + 1) / (tf + k1 * (1 - b + b * length / average_length))`, with `IDF = ln(1 + (N - df + 0.5) / (df + 0.5))`. Statistics use all passages in the snapshot. Filters restrict candidates before the top-five cutoff. Equal scores sort by study ID, source offset, and passage ID.
+
+Responses include scores, exact source text, parent context, source links, applied filters, and permitted study/passage counts. Search scores express keyword relevance. Initial retrieval evaluation is described below.
+
+## Evaluate retrieval
+
+```bash
+python -m trial_explorer.cli evaluate-retrieval \
+  --db data/processed/trials.sqlite \
+  --snapshot-id SNAPSHOT_ID \
+  --cases eval/dev.jsonl \
+  --output data/processed/keyword-evaluation.json --mode keyword
+```
+
+Each JSONL case labels source passage IDs and exact quotes. All cases are validated against the database before retrieval runs. The report includes hits, missing evidence, numerators, denominators, and recall@5. Comparison checks run independently for each study. Absent and not-applicable checks are excluded from positive recall and reported explicitly. Real and synthetic aggregates are separate. Zero positive checks produce a null score.
+
+The report records the source manifest hash, case hash, and search configuration. Existing output files are never overwritten. Invalid labels exit 5. File or database errors exit 3. Generated reports remain local under the ignored data directory.
+
+The final Day 5 development baseline contains **9 real-record cases and 10 retrieval checks**, including three snapshot-wide searches. **Macro recall@5 was 0.889 across 9 positive checks**; one absence check was excluded. Eight positive checks found all their labeled evidence. The weight-stability query retrieved the correct study but missed its labeled threshold passage. The newer global labels were added after exploratory searches and are development diagnostics.
+
+The final report is generated locally at `data/processed/keyword-evaluation-development-final.json`. To reproduce it, use that path as `--output` on the evaluation command above, choosing a new filename if it already exists.
+
+**10 held-out real-record cases** are stored in `eval/cases.heldout.jsonl`. Their source quotes, scope, and schema were validated, but retrieval has not been run on them. `eval/heldout.lock.json` records their file SHA-256 and source snapshot hash. Reserve this split for final evaluation and use only `eval/dev.jsonl` while improving retrieval.
+
+The development set remains at nine cases by author choice, below the original target of fifteen. The author approved the first age label and requested skipping additional independent label review. Other labels were source-checked by the assistant. These sample sizes, label-review limits, and development-time exploration constrain conclusions about retrieval quality. Absence cases are not measured by positive recall@5.
+
 ## Data flow
 
 `ClinicalTrials.gov → raw pages and manifest → normalized studies → exact-text passages → SQLite → CLI reads`
@@ -91,7 +127,7 @@ Each passage retains its full enclosing section so exceptions can remain availab
 
 ## Planned work
 
-Keyword retrieval, embeddings and hybrid search, cited RAG responses, evaluation, and an API service.
+Embeddings and hybrid search, cited RAG responses, evaluation, and an API service.
 
 ## Verification
 
@@ -99,7 +135,7 @@ Keyword retrieval, embeddings and hybrid search, cited RAG responses, evaluation
 python -m pytest -q
 ```
 
-Verified result: **158 tests passed**. Synthetic tests cover normalization, request and retry behavior, snapshot integrity, passage boundaries and IDs, transactional rollback, duplicate handling, CLI import, and isolation between snapshots.
+Verified result: **280 tests passed**. Synthetic tests cover normalization, request and retry behavior, snapshot integrity, passage boundaries and IDs, transactional rollback, duplicate handling, CLI import, snapshot isolation, BM25 ranking, and search filter behavior.
 
 A separate live collection retrieved 200 records from four pages and selected 50 studies. Import produced 190 passages. File and manifest hashes, database integrity, foreign keys, and every passage's exact source slices were verified. Live collection counts can change as the registry updates.
 

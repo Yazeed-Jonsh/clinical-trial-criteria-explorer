@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "split": "heldout",
+  "case_count": 10,
+  "path": "eval/cases.heldout.jsonl",
+  "sha256": "2e9ee25a7300c80d960c4ee810f8bce2cfcd305c0db78b98f43ac7ef57e80e82",
+  "snapshot_id": "ctg_2fada7d5e2754fc19f8329f1e89d7a73",
+  "snapshot_manifest_sha256": "4ee24d3e36a69367361e11fd03916b6ea13bfe72a6798c63350df719d0872f91",
+  "frozen_at": "2026-11-20T18:58:12.007057+00:00",
+  "case_ids": [
+    "heldout_001",
+    "heldout_002",
+    "heldout_003",
+    "heldout_004",
+    "heldout_005",
+    "heldout_006",
+    "heldout_007",
+    "heldout_008",
+    "heldout_009",
+    "heldout_010"
+  ],
+  "retrieval_evaluated": false,
+  "note": "Source/schema validation only. Reserve for final evaluation. Independent author review was skipped by request."
+}

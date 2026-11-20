@@ -589,3 +589,119 @@ def test_read_cli_reports_absent_study(tmp_path, capsys):
     output = capsys.readouterr()
     assert output.out == ""
     assert json.loads(output.err)["error"] == "study_not_found"
+
+
+def test_get_snapshot_passages_is_scoped_and_ordered(
+    tmp_path, importable_snapshot, monkeypatch
+):
+    import json
+    from trial_explorer import ingest, snapshots, store
+    from trial_explorer.passages import build_passages
+
+    original_studies = snapshots.load_selected_studies(importable_snapshot)
+    body = json.dumps({"studies": [{"protocolSection": {
+        "identificationModule": {"nctId": "NCT00000001"},
+        "eligibilityModule": {"eligibilityCriteria": "Other snapshot criteria"},
+    }}]}).encode()
+    monkeypatch.setattr(ingest, "fetch_studies_page", lambda token: body)
+    second_path, _ = snapshots.collect_snapshot(tmp_path / "raw")
+    second_study = snapshots.load_selected_studies(second_path.parent)[0]
+
+    with closing(connect_database(tmp_path / "trials.sqlite")) as connection:
+        store.import_snapshot(connection, importable_snapshot)
+        store.import_snapshot(connection, second_path.parent)
+        expected = [
+            passage for study in original_studies for passage in build_passages(study)
+        ]
+        assert store.get_snapshot_passages(connection, original_studies[0].snapshot_id) == expected
+        assert store.get_snapshot_passages(connection, second_study.snapshot_id) == build_passages(second_study)
+        assert connection.row_factory is None
+        with pytest.raises(ValueError, match="Unknown snapshot"):
+            store.get_snapshot_passages(connection, "' OR 1=1 --")
+
+
+def test_get_snapshot_passages_accepts_existing_empty_snapshot(tmp_path, snapshot_manifest):
+    from trial_explorer import store
+
+    with closing(connect_database(tmp_path / "trials.sqlite")) as connection:
+        store.initialize_database(connection)
+        connection.execute("BEGIN")
+        store.insert_snapshot(connection, snapshot_manifest)
+        connection.commit()
+
+        assert store.get_snapshot_passages(connection, snapshot_manifest["snapshot_id"]) == []
+
+
+def test_get_snapshot_passages_rejects_unknown_snapshot(tmp_path):
+    from trial_explorer import store
+
+    with closing(connect_database(tmp_path / "trials.sqlite")) as connection:
+        store.initialize_database(connection)
+        with pytest.raises(ValueError, match="Unknown snapshot"):
+            store.get_snapshot_passages(connection, "missing")
+
+
+@pytest.mark.parametrize(
+    ("query", "unknown_snapshot", "expected_exit", "expected_count"),
+    [
+        ("age", False, 0, 2),
+        ("unmatchedword", False, 0, 0),
+        ("?!", False, 2, None),
+        ("age", True, 2, None),
+    ],
+)
+def test_search_cli(
+    tmp_path, importable_snapshot, capsys, query, unknown_snapshot,
+    expected_exit, expected_count
+):
+    import json
+    from trial_explorer import cli, snapshots, store
+
+    path = tmp_path / "trials.sqlite"
+    with closing(connect_database(path)) as connection:
+        store.import_snapshot(connection, importable_snapshot)
+    study = snapshots.load_selected_studies(importable_snapshot)[0]
+    snapshot_id = "unknown" if unknown_snapshot else study.snapshot_id
+    before = path.read_bytes()
+
+    assert cli.main([
+        "search", "--db", str(path), "--snapshot-id", snapshot_id,
+        "--query", query, "--mode", "keyword",
+    ]) == expected_exit
+    output = capsys.readouterr()
+    if expected_exit:
+        assert output.out == ""
+        assert json.loads(output.err)["error"] == "invalid_search"
+    else:
+        assert output.err == ""
+        response = json.loads(output.out)
+        assert response["snapshot_id"] == snapshot_id
+        assert response["permitted_study_count"] == 2
+        assert response["permitted_passage_count"] == 4
+        assert response["returned_count"] == expected_count
+        assert response["limit"] == 5
+        assert response["result_unit"] == "passage"
+        assert response["exhaustive"] is False
+        for rank, result in enumerate(response["results"], 1):
+            assert result["rank"] == rank
+            assert result["score"] > 0
+            assert result["method"] == "keyword"
+            with closing(connect_database(path)) as connection:
+                source = store.get_study(connection, snapshot_id, result["nct_id"])
+            assert source.criteria_text[result["source_start"]:result["source_end"]] == result["text"]
+            assert result["source_url"] == source.source_url
+    assert path.read_bytes() == before
+
+
+def test_search_cli_missing_database(tmp_path, capsys):
+    import json
+    from trial_explorer.cli import main
+
+    path = tmp_path / "missing.sqlite"
+    assert main([
+        "search", "--db", str(path), "--snapshot-id", "unknown", "--query", "age",
+    ]) == 3
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert json.loads(output.err)["error"] == "search_failed"
+    assert not path.exists()

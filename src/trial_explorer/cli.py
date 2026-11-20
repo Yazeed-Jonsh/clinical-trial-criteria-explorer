@@ -10,6 +10,9 @@ from dataclasses import asdict
 
 from trial_explorer.store import connect_database, get_passages, get_study, import_snapshot
 from trial_explorer.snapshots import collect_snapshot
+from trial_explorer.search import keyword_search
+from trial_explorer.evaluation import evaluate_retrieval, load_evaluation_cases
+from trial_explorer.store import get_snapshot_passages
 
 
 def positive_integer(value: str) -> int:
@@ -17,7 +20,6 @@ def positive_integer(value: str) -> int:
     if number < 1:
         raise argparse.ArgumentTypeError("Expected a positive integer")
     return number
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="trial-explorer")
@@ -36,7 +38,71 @@ def main(argv: list[str] | None = None) -> int:
         reader.add_argument("--nct-id", required=True)
         if name == "read-passages":
             reader.add_argument("--limit", type=positive_integer)
+
+    search = commands.add_parser("search", help="Search stored criteria passages")
+    search.add_argument("--db", type=Path, required=True)
+    search.add_argument("--snapshot-id", required=True)
+    search.add_argument("--query", required=True)
+    search.add_argument("--mode", choices=["keyword"], default="keyword")
+    search.add_argument("--nct-id", action="append", help="Restrict to a study; repeat for multiple IDs")
+    search.add_argument(
+        "--recruitment-status", action="append",
+        help="Restrict to a recruitment status; repeat for multiple statuses",
+    )
+
+    evaluator = commands.add_parser("evaluate-retrieval", help="Measure labeled passage recall@5")
+    evaluator.add_argument("--db", type=Path, required=True)
+    evaluator.add_argument("--snapshot-id", required=True)
+    evaluator.add_argument("--cases", type=Path, required=True)
+    evaluator.add_argument("--output", type=Path, required=True)
+    evaluator.add_argument("--mode", choices=["keyword"], default="keyword")
+
     args = parser.parse_args(argv)
+    if args.command == "evaluate-retrieval":
+        try:
+            cases = load_evaluation_cases(args.cases)
+            uri = args.db.resolve().as_uri() + "?mode=ro"
+            with closing(sqlite3.connect(uri, uri=True)) as connection:
+                report = evaluate_retrieval(connection, cases, args.snapshot_id)
+            serialized = json.dumps(report, indent=2, ensure_ascii=True, allow_nan=False) + "\n"
+            with args.output.open("x", encoding="utf-8") as output:
+                output.write(serialized)
+        except ValueError as error:
+            print(json.dumps({"error": "invalid_evaluation_labels", "message": str(error)}), file=sys.stderr)
+            return 5
+        except (OSError, sqlite3.Error) as error:
+            print(json.dumps({"error": "evaluation_failed", "message": str(error)}), file=sys.stderr)
+            return 3
+        print(json.dumps({
+            "report_path": str(args.output), "case_count": report["case_count"],
+            "check_count": report["check_count"], "summaries": report["summaries"],
+        }, indent=2))
+        return 0
+    if args.command == "search":
+        try:
+            uri = args.db.resolve().as_uri() + "?mode=ro"
+            with closing(sqlite3.connect(uri, uri=True)) as connection:
+                result = keyword_search(
+                    connection, args.snapshot_id, args.query,
+                    nct_ids=args.nct_id,
+                    recruitment_statuses=args.recruitment_status,
+                )
+        except ValueError as error:
+            print(
+                json.dumps({"error": "invalid_search", "message": str(error)}),
+                file=sys.stderr,
+            )
+            return 2
+        except (OSError, sqlite3.Error) as error:
+            print(
+                json.dumps({"error": "search_failed", "message": str(error)}),
+                file=sys.stderr,
+            )
+            return 3
+
+        print(json.dumps(result, indent=2))
+        return 0
+
     if args.command in ("read-study", "read-passages"):
         try:
             uri = args.db.resolve().as_uri() + "?mode=ro"
