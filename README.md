@@ -92,6 +92,31 @@ BM25 uses lexical-v1 Unicode normalization, preserves numeric comparisons and de
 
 Responses include scores, exact source text, parent context, source links, applied filters, and permitted study/passage counts. Search scores express keyword relevance. Initial retrieval evaluation is described below.
 
+## Build a vector index
+
+With the `vector` dependencies installed and the local MiniLM model downloaded, run:
+
+```bash
+python -m trial_explorer.cli build-index \
+  --db data/processed/trials.sqlite \
+  --snapshot-id SNAPSHOT_ID --model-dir MODEL_DIR \
+  --index-dir indexes/SNAPSHOT_ID/minilm
+```
+
+Use the downloaded revision directory containing `tokenizer.json` and `onnx/model.onnx` as `MODEL_DIR`.
+The command requires a new output directory and reports the passage IDs that exceeded the model's token limit.
+
+Hybrid search is available through `search --mode hybrid --index-dir INDEX_DIR --model-dir MODEL_DIR`.
+Use `--mode vector` with the same directories to rank by FAISS cosine similarity alone.
+It requires the optional `vector` dependencies, a locally built FAISS index, and the matching MiniLM revision.
+BM25 and FAISS each contribute up to 20 candidates after study filters are applied.
+Reciprocal rank fusion adds `1 / (60 + rank)` for each list containing a passage and returns the top five.
+On nine positive development checks, all three modes achieved macro recall@5 of 0.889.
+Keyword and hybrid missed the weight-stability passage. Vector found it but missed the 90-day GLP-1 passage.
+The CLI benchmark measured median search latency across 27 positive calls per mode: 10.66 ms for keyword, 588.06 ms for vector, and 646.84 ms for hybrid.
+These local timings include model and index setup on each vector or hybrid call and exclude CLI startup and JSON printing.
+The held-out split remains reserved.
+
 ## Evaluate retrieval
 
 ```bash
@@ -99,10 +124,12 @@ python -m trial_explorer.cli evaluate-retrieval \
   --db data/processed/trials.sqlite \
   --snapshot-id SNAPSHOT_ID \
   --cases eval/dev.jsonl \
-  --output data/processed/keyword-evaluation.json --mode keyword
+  --output data/processed/keyword-evaluation.json --mode keyword --repeats 3
 ```
 
 Each JSONL case labels source passage IDs and exact quotes. All cases are validated against the database before retrieval runs. The report includes hits, missing evidence, numerators, denominators, and recall@5. Comparison checks run independently for each study. Absent and not-applicable checks are excluded from positive recall and reported explicitly. Real and synthetic aggregates are separate. Zero positive checks produce a null score.
+
+To compare modes, rerun the command with `--mode vector` and `--mode hybrid`, using the same cases and snapshot. Add `--index-dir INDEX_DIR --model-dir MODEL_DIR` for both modes and use a distinct output filename for each run. `--repeats 3` records three search timings per check. The summary median uses only positive checks and includes model and index setup where applicable.
 
 The report records the source manifest hash, case hash, and search configuration. Existing output files are never overwritten. Invalid labels exit 5. File or database errors exit 3. Generated reports remain local under the ignored data directory.
 

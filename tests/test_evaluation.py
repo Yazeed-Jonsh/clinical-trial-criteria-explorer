@@ -373,3 +373,45 @@ def test_evaluation_runs_comparison_checks_independently(labeled_database):
     assert report["summaries"]["synthetic"]["macro_recall_at_5"] == 0.5
     assert report["checks"][0]["applied_filters"]["nct_ids"] == ["NCT00000001"]
     assert report["checks"][1]["applied_filters"]["nct_ids"] == ["NCT00000002"]
+
+
+@pytest.mark.parametrize("mode", ["vector", "hybrid"])
+def test_evaluate_cli_propagates_mode_and_records_repeated_timings(
+    labeled_database, tmp_path, capsys, monkeypatch, mode,
+):
+    import json
+    from trial_explorer import cli, evaluation
+
+    connection, case, _ = labeled_database
+    database = connection.execute("PRAGMA database_list").fetchone()[2]
+    cases = tmp_path / "cases.jsonl"
+    cases.write_text(json.dumps(case) + "\n", encoding="utf-8")
+    index = tmp_path / "index"
+    index.mkdir()
+    (index / "manifest.json").write_text("{}", encoding="utf-8")
+    model = tmp_path / "revision"
+    report_path = tmp_path / "report.json"
+    label = case["retrieval_checks"][0]["relevant_evidence"][0]["passage_id"]
+
+    def search(connection, snapshot_id, query, **options):
+        assert (options["mode"], options["index_dir"], options["model_dir"]) == (
+            mode, index, model,
+        )
+        return {"results": [{"passage_id": label}], "applied_filters": {}}
+
+    times = iter([1, 2, 3, 5, 6, 9])
+    monkeypatch.setattr(evaluation, "keyword_search", search)
+    monkeypatch.setattr(evaluation, "perf_counter", lambda: next(times))
+    assert cli.main([
+        "evaluate-retrieval", "--db", database, "--snapshot-id", case["snapshot_id"],
+        "--cases", str(cases), "--output", str(report_path), "--mode", mode,
+        "--index-dir", str(index), "--model-dir", str(model), "--repeats", "3",
+    ]) == 0
+    report = json.loads(report_path.read_bytes())
+    assert json.loads(capsys.readouterr().out)["summaries"] == report["summaries"]
+    assert report["configuration"]["method"] == mode
+    assert report["configuration"]["embedding_revision"] == "revision"
+    assert report["checks"][0]["recall_at_5"] == 1
+    assert report["checks"][0]["missing_ids"] == []
+    assert report["summaries"]["synthetic"]["timed_positive_calls"] == 3
+    assert report["summaries"]["synthetic"]["median_search_latency_ms"] == 2000

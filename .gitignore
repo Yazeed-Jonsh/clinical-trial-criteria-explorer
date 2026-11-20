@@ -15,6 +15,7 @@ htmlcov/
 # Downloaded data, generated indexes, local databases, and traces
 data/raw/
 data/processed/
+data/models/
 indexes/
 *.sqlite
 *.sqlite3

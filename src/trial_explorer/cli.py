@@ -8,6 +8,7 @@ import sqlite3
 from contextlib import closing
 from dataclasses import asdict
 
+from trial_explorer.indexes import build_snapshot_index
 from trial_explorer.store import connect_database, get_passages, get_study, import_snapshot
 from trial_explorer.snapshots import collect_snapshot
 from trial_explorer.search import keyword_search
@@ -43,34 +44,67 @@ def main(argv: list[str] | None = None) -> int:
     search.add_argument("--db", type=Path, required=True)
     search.add_argument("--snapshot-id", required=True)
     search.add_argument("--query", required=True)
-    search.add_argument("--mode", choices=["keyword"], default="keyword")
+    search.add_argument("--mode", choices=["keyword", "vector", "hybrid"], default="keyword")
+    search.add_argument("--index-dir", type=Path)
+    search.add_argument("--model-dir", type=Path)
     search.add_argument("--nct-id", action="append", help="Restrict to a study; repeat for multiple IDs")
     search.add_argument(
         "--recruitment-status", action="append",
         help="Restrict to a recruitment status; repeat for multiple statuses",
     )
 
+    builder = commands.add_parser("build-index", help="Build a FAISS index for a stored snapshot")
+    builder.add_argument("--db", type=Path, required=True)
+    builder.add_argument("--snapshot-id", required=True)
+    builder.add_argument("--index-dir", type=Path, required=True)
+    builder.add_argument("--model-dir", type=Path, required=True)
+
     evaluator = commands.add_parser("evaluate-retrieval", help="Measure labeled passage recall@5")
     evaluator.add_argument("--db", type=Path, required=True)
     evaluator.add_argument("--snapshot-id", required=True)
     evaluator.add_argument("--cases", type=Path, required=True)
     evaluator.add_argument("--output", type=Path, required=True)
-    evaluator.add_argument("--mode", choices=["keyword"], default="keyword")
+    evaluator.add_argument("--mode", choices=["keyword", "vector", "hybrid"], default="keyword")
+    evaluator.add_argument("--index-dir", type=Path)
+    evaluator.add_argument("--model-dir", type=Path)
+    evaluator.add_argument("--repeats", type=positive_integer, default=1)
 
     args = parser.parse_args(argv)
+    if args.command == "build-index":
+        try:
+            uri = args.db.resolve().as_uri() + "?mode=ro"
+            with closing(sqlite3.connect(uri, uri=True)) as connection:
+                result = build_snapshot_index(
+                    connection, args.snapshot_id, args.index_dir, args.model_dir
+                )
+        except ValueError as error:
+            print(json.dumps({"error": "invalid_index_input", "message": str(error)}), file=sys.stderr)
+            return 2
+        except (OSError, sqlite3.Error, ImportError, RuntimeError) as error:
+            print(json.dumps({"error": "index_build_failed", "message": str(error)}), file=sys.stderr)
+            return 3
+        print(json.dumps(result, indent=2))
+        return 0
     if args.command == "evaluate-retrieval":
+        missing_paths = args.index_dir is None or args.model_dir is None
+        extra_paths = args.index_dir is not None or args.model_dir is not None
+        if (args.mode == "keyword" and extra_paths) or (args.mode != "keyword" and missing_paths):
+            evaluator.error("Specify --index-dir and --model-dir with vector or hybrid mode only")
         try:
             cases = load_evaluation_cases(args.cases)
             uri = args.db.resolve().as_uri() + "?mode=ro"
             with closing(sqlite3.connect(uri, uri=True)) as connection:
-                report = evaluate_retrieval(connection, cases, args.snapshot_id)
+                report = evaluate_retrieval(
+                    connection, cases, args.snapshot_id, mode=args.mode,
+                    index_dir=args.index_dir, model_dir=args.model_dir, repeats=args.repeats,
+                )
             serialized = json.dumps(report, indent=2, ensure_ascii=True, allow_nan=False) + "\n"
             with args.output.open("x", encoding="utf-8") as output:
                 output.write(serialized)
         except ValueError as error:
             print(json.dumps({"error": "invalid_evaluation_labels", "message": str(error)}), file=sys.stderr)
             return 5
-        except (OSError, sqlite3.Error) as error:
+        except (OSError, sqlite3.Error, ImportError, RuntimeError) as error:
             print(json.dumps({"error": "evaluation_failed", "message": str(error)}), file=sys.stderr)
             return 3
         print(json.dumps({
@@ -86,6 +120,8 @@ def main(argv: list[str] | None = None) -> int:
                     connection, args.snapshot_id, args.query,
                     nct_ids=args.nct_id,
                     recruitment_statuses=args.recruitment_status,
+                    index_dir=args.index_dir, model_dir=args.model_dir,
+                    mode=args.mode,
                 )
         except ValueError as error:
             print(
@@ -93,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-        except (OSError, sqlite3.Error) as error:
+        except (OSError, sqlite3.Error, ImportError) as error:
             print(
                 json.dumps({"error": "search_failed", "message": str(error)}),
                 file=sys.stderr,

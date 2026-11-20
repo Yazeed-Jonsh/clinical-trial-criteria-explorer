@@ -81,6 +81,7 @@ def rank_passages(
     passages: list[Passage],
     *,
     permitted_nct_ids: set[str] | None = None,
+    limit: int = 5,
 ) -> list[tuple[Passage, float]]:
     """Return up to five positive BM25 matches from one snapshot."""
     query_tokens = tokenize(query)
@@ -124,7 +125,31 @@ def rank_passages(
             match[0].passage_id,
         )
     )
-    return matches[:5]
+    return matches[:limit]
+
+
+def fuse_rankings(
+    keyword: list[tuple[Passage, float]],
+    semantic: list[tuple[Passage, float]],
+) -> list[tuple[Passage, float]]:
+    """Combine two ranked lists with equal-weight reciprocal rank fusion."""
+    scores: dict[str, float] = {}
+    passages: dict[str, Passage] = {}
+    for ranking in (keyword, semantic):
+        seen: set[str] = set()
+        for rank, (passage, _) in enumerate(ranking, 1):
+            identifier = passage.passage_id
+            if identifier in seen:
+                continue
+            seen.add(identifier)
+            passages[identifier] = passage
+            scores[identifier] = scores.get(identifier, 0.0) + 1 / (60 + rank)
+
+    results = [(passages[identifier], score) for identifier, score in scores.items()]
+    results.sort(key=lambda item: (
+        -item[1], item[0].nct_id, item[0].source_start, item[0].passage_id
+    ))
+    return results[:5]
 def validate_filter_values(
     values: list[str] | None, allowed: set[str] | frozenset[str], name: str
 ) -> set[str] | None:

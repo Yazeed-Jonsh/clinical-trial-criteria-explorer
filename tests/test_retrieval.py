@@ -302,3 +302,21 @@ def test_filter_permits_multiple_studies(sample_passage):
     )
 
     assert [p.nct_id for p, _ in results] == ["NCT00000001", "NCT00000003"]
+
+
+def test_rrf_uses_positions_and_rewards_agreement(sample_passage):
+    from dataclasses import replace
+    from trial_explorer.retrieval import fuse_rankings
+
+    shared = sample_passage
+    keyword_only = replace(shared, passage_id="keyword", nct_id="NCT00000002")
+    semantic_only = replace(shared, passage_id="semantic", nct_id="NCT00000003")
+
+    results = fuse_rankings(
+        [(keyword_only, 100.0), (shared, 12.0), (shared, 1.0)],
+        [(semantic_only, 0.9), (shared, 0.3)],
+    )
+
+    assert [p for p, _ in results] == [shared, keyword_only, semantic_only]
+    assert [score for _, score in results] == pytest.approx([2 / 62, 1 / 61, 1 / 61])
+    assert fuse_rankings([], []) == []

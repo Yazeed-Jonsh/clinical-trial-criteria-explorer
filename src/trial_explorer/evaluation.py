@@ -2,6 +2,8 @@ import json
 import sqlite3
 from pathlib import Path
 from hashlib import sha256
+from statistics import median
+from time import perf_counter
 
 from trial_explorer.normalize import SOURCE_STATUSES
 from trial_explorer.retrieval import TOKEN_PATTERN, tokenize, validate_filter_values
@@ -192,9 +194,13 @@ def validate_evaluation_case(connection: sqlite3.Connection, case: dict) -> None
 
 
 def evaluate_retrieval(
-    connection: sqlite3.Connection, cases: list[dict], snapshot_id: str
+    connection: sqlite3.Connection, cases: list[dict], snapshot_id: str, *,
+    mode: str = "keyword", index_dir: Path | None = None,
+    model_dir: Path | None = None, repeats: int = 1,
 ) -> dict:
-    """Validate all labels, then measure keyword passage recall per check."""
+    """Validate all labels, then measure passage recall and search latency."""
+    if not 1 <= repeats:
+        raise ValueError("Evaluation requires at least one repeat")
     if not cases:
         raise ValueError("Evaluation requires at least one case")
     seen_ids = set()
@@ -213,11 +219,16 @@ def evaluate_retrieval(
             filters = dict(case["filters"])
             if case["mode"] != "search" and scope is not None:
                 filters["nct_ids"] = scope
-            response = keyword_search(
-                connection, snapshot_id, case["query"],
-                nct_ids=filters.get("nct_ids"),
-                recruitment_statuses=filters.get("recruitment_statuses"),
-            )
+            latencies = []
+            for _ in range(repeats):
+                started = perf_counter()
+                response = keyword_search(
+                    connection, snapshot_id, case["query"],
+                    nct_ids=filters.get("nct_ids"),
+                    recruitment_statuses=filters.get("recruitment_statuses"),
+                    mode=mode, index_dir=index_dir, model_dir=model_dir,
+                )
+                latencies.append((perf_counter() - started) * 1000)
             retrieved = [item["passage_id"] for item in response["results"]]
             relevant = {item["passage_id"] for item in check["relevant_evidence"]}
             found = relevant.intersection(retrieved[:5])
@@ -235,17 +246,22 @@ def evaluate_retrieval(
                 "denominator": len(relevant) if positive else None,
                 "recall_at_5": passage_recall_at_five(retrieved, relevant) if positive else None,
                 "excluded_reason": None if positive else check["applicability"],
+                "search_latencies_ms": latencies,
+                "median_search_latency_ms": median(latencies),
             })
 
     summaries = {}
     for kind in ("real", "synthetic"):
         group = [row for row in results if row["data_kind"] == kind]
         positive_rows = [row for row in group if row["applicability"] == "positive"]
+        timings = [time for row in positive_rows for time in row["search_latencies_ms"]]
         summaries[kind] = {
             "case_count": len({row["case_id"] for row in group}),
             "check_count": len(group),
             "positive_check_count": len(positive_rows),
             "excluded_check_count": len(group) - len(positive_rows),
+            "timed_positive_calls": len(timings),
+            "median_search_latency_ms": median(timings) if timings else None,
             "macro_recall_at_5": (
                 sum(row["recall_at_5"] for row in positive_rows) / len(positive_rows)
                 if positive_rows else None
@@ -256,7 +272,7 @@ def evaluate_retrieval(
         "SELECT manifest_hash FROM snapshots WHERE snapshot_id = ?", (snapshot_id,)
     ).fetchone()[0]
     configuration = {
-        "method": "keyword", "tokenizer_version": "lexical-v1",
+        "method": mode, "tokenizer_version": "lexical-v1",
         "unicode_normalization": "NFKC", "casefold": True,
         "operator_mapping": {"\u2264": "<=", "\u2265": ">="},
         "token_pattern": TOKEN_PATTERN.pattern, "stopwords": [], "stemming": False,
@@ -264,10 +280,15 @@ def evaluate_retrieval(
         "idf_formula": "ln(1+(N-df+0.5)/(df+0.5))",
         "statistics_scope": "full_snapshot",
         "tie_order": ["score_desc", "nct_id", "source_start", "passage_id"],
-        "candidate_limit": 20, "rrf_k": 60, "final_limit": 5,
+        "candidate_limit": 20 if mode == "hybrid" else 5,
+        "rrf_k": 60 if mode == "hybrid" else None, "final_limit": 5,
         "segmentation_version": "paragraph-v1",
-        "embedding_revision": None,
+        "embedding_revision": model_dir.name if model_dir is not None else None,
     }
+    if index_dir is not None:
+        configuration["index_manifest_sha256"] = sha256(
+            (index_dir / "manifest.json").read_bytes()
+        ).hexdigest()
     return {
         "schema_version": 1, "snapshot_id": snapshot_id,
         "snapshot_manifest_sha256": manifest_hash,
@@ -276,6 +297,12 @@ def evaluate_retrieval(
         "configuration_sha256": sha256(canonical_json(configuration)).hexdigest(),
         "case_count": len(cases), "check_count": len(results),
         "summaries": summaries, "checks": results,
+        "timing": {
+            "repeats_per_check": repeats,
+            "scope": "Search calls including model and index setup when applicable. "
+                     "Excludes label validation, database connection, and report writing.",
+            "summary_scope": "Positive checks only, grouped by data_kind.",
+        },
         "metric": "distinct relevant passages in first 5 / distinct labeled relevant passages",
         "aggregation": "mean of positive-check recalls, grouped by data_kind",
         "limitations": "Measures retrieval against supplied labels. Label completeness and relevance require source review.",

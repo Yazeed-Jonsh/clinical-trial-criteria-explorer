@@ -1,16 +1,22 @@
-"""Snapshot-scoped keyword retrieval shared by CLI and evaluation."""
+"""Snapshot-scoped retrieval shared by CLI and evaluation."""
 
 import sqlite3
 from dataclasses import asdict
+from pathlib import Path
 
+from trial_explorer.embeddings import MiniLMEncoder, minilm_configuration
+from trial_explorer.indexes import load_passage_index
 from trial_explorer.normalize import SOURCE_STATUSES
-from trial_explorer.retrieval import rank_passages, validate_filter_values
+from trial_explorer.retrieval import fuse_rankings, rank_passages, validate_filter_values
 from trial_explorer.store import get_passages, get_study, get_snapshot_passages
 
 def keyword_search(
     connection: sqlite3.Connection, snapshot_id: str, query: str,
     *, nct_ids: list[str] | None = None,
     recruitment_statuses: list[str] | None = None,
+    index_dir: Path | None = None,
+    model_dir: Path | None = None,
+    mode: str | None = None,
 ) -> dict:
     """Search one stored snapshot and return ranked evidence."""
     passages = get_snapshot_passages(connection, snapshot_id)
@@ -29,7 +35,32 @@ def keyword_search(
         if (requested_ids is None or nct_id in requested_ids)
         and (requested_statuses is None or status in requested_statuses)
     }
-    matches = rank_passages(query, passages, permitted_nct_ids=permitted_ids)
+    has_paths = index_dir is not None or model_dir is not None
+    mode = mode if mode is not None else ("hybrid" if has_paths else "keyword")
+    if mode not in ("keyword", "vector", "hybrid"):
+        raise ValueError("Unknown search mode")
+    if mode == "keyword" and has_paths:
+        raise ValueError("Index and model directories require --mode vector or hybrid")
+    if mode != "keyword" and (index_dir is None or model_dir is None):
+        raise ValueError(f"Search mode {mode} requires --index-dir and --model-dir")
+    matches = []
+    if mode in ("keyword", "hybrid"):
+        matches = rank_passages(
+            query, passages, permitted_nct_ids=permitted_ids, limit=20 if mode == "hybrid" else 5
+        )
+    if index_dir is not None and model_dir is not None:
+        snapshot_hash = connection.execute(
+            "SELECT manifest_hash FROM snapshots WHERE snapshot_id = ?", (snapshot_id,)
+        ).fetchone()[0]
+        embedding = minilm_configuration(model_dir)
+        index = load_passage_index(
+            index_dir, passages, snapshot_hash=snapshot_hash, embedding=embedding
+        )
+        vector, _ = MiniLMEncoder(model_dir).encode(query)
+        semantic = index.search(
+            vector, limit=20 if mode == "hybrid" else 5, permitted_nct_ids=permitted_ids
+        )
+        matches = fuse_rankings(matches, semantic) if mode == "hybrid" else semantic
     applied_filters = {}
     if nct_ids is not None:
         applied_filters["nct_ids"] = nct_ids
@@ -46,7 +77,7 @@ def keyword_search(
             **asdict(passage),
             "rank": rank,
             "score": score,
-            "method": "keyword",
+            "method": mode,
             "source_url": study.source_url,
             "source_updated_at": study.source_updated_at,
         })
